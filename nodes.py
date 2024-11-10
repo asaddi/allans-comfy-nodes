@@ -1,5 +1,145 @@
 from enum import Enum, auto
 import math
+import random
+
+
+class WildParserState(Enum):
+    LITERAL = auto()
+    ESCAPE = auto()
+    CHOICES = auto()
+    CHOICES_ESCAPE = auto()
+
+
+# Who's crazy enough to write a parser by hand in 2024?!
+def parse_wildcards(input: str):
+    output = []
+
+    state = WildParserState.LITERAL
+
+    lit = []
+    choice = []
+    choices = []
+
+    ESCAPABLE = ("\\", "{", "|", "}")
+
+    for c in input:
+        if state == WildParserState.LITERAL:
+            if c == "\\":
+                state = WildParserState.ESCAPE
+            elif c == "{":
+                if len(lit) > 0:
+                    output.append((WildParserState.LITERAL, "".join(lit)))
+                    lit = []
+
+                choice = []
+                choices = []
+                state = WildParserState.CHOICES
+            else:
+                lit.append(c)
+
+        elif state == WildParserState.ESCAPE:
+            if c in ESCAPABLE:
+                lit.append(c)
+            else:
+                # Not a valid escape, just forget we were escaped
+                lit.append("\\")
+                lit.append(c)
+            state = WildParserState.LITERAL
+
+        elif state == WildParserState.CHOICES:
+            if c == "\\":
+                state = WildParserState.CHOICES_ESCAPE
+            elif c == "}":
+                if len(choice) > 0:
+                    choices.append("".join(choice))
+                if len(choices) > 0:
+                    output.append((WildParserState.CHOICES, choices))
+                state = WildParserState.LITERAL
+            elif c == "|":
+                if len(choice) > 0:
+                    choices.append("".join(choice))
+                choice = []
+            else:
+                choice.append(c)
+
+        elif state == WildParserState.CHOICES_ESCAPE:
+            if c in ESCAPABLE:
+                choice.append(c)
+            else:
+                # Not a valid escape
+                choice.append("\\")
+                choice.append(c)
+            state = WildParserState.CHOICES
+
+    # Finished processing the entire string.
+    # We *should* error out if the state isn't LITERAL, but
+    # we actually don't have that luxury. Just clean up and make do.
+
+    if state == WildParserState.LITERAL:
+        if len(lit) > 0:
+            output.append((WildParserState.LITERAL, "".join(lit)))
+    elif state == WildParserState.ESCAPE:
+        lit.append("\\")
+        output.append((WildParserState.LITERAL, "".join(lit)))
+    elif state == WildParserState.CHOICES:
+        if len(choice) > 0:
+            choices.append("".join(choice))
+        if len(choices) > 0:
+            output.append((WildParserState.CHOICES, choices))
+    elif state == WildParserState.CHOICES_ESCAPE:
+        choice.append("\\")
+        choices.append("".join(choice))
+        # We know it has at least one choice...
+        output.append((WildParserState.CHOICES, choices))
+
+    return output
+
+
+class WildText:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "text": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                    },
+                ),
+                "seed": (
+                    "INT",
+                    {
+                        "min": 0,
+                        "max": 0xFFFF_FFFF_FFFF_FFFF,
+                    },
+                ),
+            }
+        }
+
+    TITLE = "Text Wildcards"
+
+    RETURN_TYPES = ("STRING",)
+
+    FUNCTION = "execute"
+
+    CATEGORY = "asaddi"
+
+    def execute(self, text: str, seed: int):
+        parsed = parse_wildcards(text)
+
+        rand = random.Random(seed)
+        output = []
+        for inst, value in parsed:
+            assert inst in (
+                WildParserState.LITERAL,
+                WildParserState.CHOICES,
+            ), "bad instruction"
+            if inst == WildParserState.LITERAL:
+                output.append(value)
+            else:
+                output.append(rand.choice(value))
+
+        return ("".join(output),)
 
 
 class Orientation(Enum):
@@ -101,5 +241,6 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
+    "WildText": WildText,
     "ResolutionChooser": ResolutionChooser,
 }

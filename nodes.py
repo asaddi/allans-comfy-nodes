@@ -95,7 +95,7 @@ def parse_wildcards(input: str):
     return output
 
 
-class WildText:
+class ReproducibleWildcards:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -116,7 +116,7 @@ class WildText:
             }
         }
 
-    TITLE = "Text Wildcards"
+    TITLE = "Reproducible Wildcards"
 
     RETURN_TYPES = ("STRING",)
 
@@ -170,11 +170,11 @@ class ResolutionChooser:
                 ),
                 "megapixels": ("FLOAT", {"min": 0.0, "default": 1.0}),
                 "divisor": (
-                    "INT",
-                    {
-                        "min": 1,
-                        "default": 64,
-                    },
+                    [
+                        "64",  # SDXL/SD3.5
+                        "16",  # Flux
+                        "8",  # SD1.5
+                    ],
                 ),
             }
         }
@@ -225,7 +225,7 @@ class ResolutionChooser:
 
         return width, height
 
-    def calculate(self, ratio: str, orientation: str, megapixels: float, divisor: int):
+    def calculate(self, ratio: str, orientation: str, megapixels: float, divisor: str):
         ratio_parts = ratio.split(":", 1)
         ratio_arg = (int(ratio_parts[0]), int(ratio_parts[1]))
 
@@ -234,13 +234,13 @@ class ResolutionChooser:
         megapixels_arg = 1024 * 1024 * megapixels
 
         width, height = ResolutionChooser.find_resolution(
-            ratio_arg, orientation_arg, megapixels_arg, divisor
+            ratio_arg, orientation_arg, megapixels_arg, int(divisor)
         )
 
         return (width, height)
 
 
 NODE_CLASS_MAPPINGS = {
-    "WildText": WildText,
+    "ReproducibleWildcards": ReproducibleWildcards,
     "ResolutionChooser": ResolutionChooser,
 }

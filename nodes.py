@@ -1,6 +1,5 @@
 from enum import Enum, auto
 import math
-import random
 
 
 class WildParserState(Enum):
@@ -127,7 +126,6 @@ class ReproducibleWildcards:
     def execute(self, text: str, seed: int):
         parsed = parse_wildcards(text)
 
-        rand = random.Random(seed)
         output = []
         for inst, value in parsed:
             assert inst in (
@@ -137,7 +135,10 @@ class ReproducibleWildcards:
             if inst == WildParserState.LITERAL:
                 output.append(value)
             else:
-                output.append(rand.choice(value))
+                count = len(value)
+                choice = seed % count
+                output.append(value[choice])
+                seed = seed // count
 
         return ("".join(output),)
 

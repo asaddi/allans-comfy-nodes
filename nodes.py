@@ -2,6 +2,53 @@ from enum import Enum, auto
 import math
 
 
+class SimpleBus:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "optional": {
+                "bus": ("SIMPLEBUS",),
+                "model": ("MODEL",),
+                "vae": ("VAE",),
+                "latent": ("LATENT",),
+                "guider": ("GUIDER",),
+            }
+        }
+
+    TITLE = "Simple Bus"
+
+    RETURN_TYPES = ("SIMPLEBUS", "MODEL", "VAE", "LATENT", "GUIDER")
+    RETURN_NAMES = ("BUS", "MODEL", "VAE", "LATENT", "GUIDER")
+
+    FUNCTION = "execute"
+
+    CATEGORY = "asaddi"
+
+    def execute(self, bus=None, model=None, vae=None, latent=None, guider=None):
+        if bus is None:
+            bus = {}
+
+        if model is not None:
+            bus["model"] = model
+
+        if vae is not None:
+            bus["vae"] = vae
+
+        if latent is not None:
+            bus["latent"] = latent
+
+        if guider is not None:
+            bus["guider"] = guider
+
+        return (
+            bus,
+            bus.get("model"),
+            bus.get("vae"),
+            bus.get("latent"),
+            bus.get("guider"),
+        )
+
+
 class WildParserState(Enum):
     LITERAL = auto()
     ESCAPE = auto()
@@ -242,6 +289,7 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
+    "SimpleBus": SimpleBus,
     "ReproducibleWildcards": ReproducibleWildcards,
     "ResolutionChooser": ResolutionChooser,
 }

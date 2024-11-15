@@ -175,13 +175,49 @@ class RatingDisplay:
         return f"{self.label}:{self.value:.3f}"
 
 
+class WDv3Model:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ([k for k in MODEL_REPO_MAP.keys()],),
+            }
+        }
+
+    TITLE = "WDv3 Model"
+
+    RETURN_TYPES = ("WDV3_MODEL",)
+
+    FUNCTION = "execute"
+
+    CATEGORY = "asaddi"
+
+    def execute(self, model):
+        repo_id = MODEL_REPO_MAP[model]
+
+        print(f"Loading model '{model}' from '{repo_id}'...")
+        model: nn.Module = timm.create_model("hf-hub:" + repo_id).eval()
+        state_dict = timm.models.load_state_dict_from_hf(repo_id)
+        model.load_state_dict(state_dict)
+
+        print("Loading tag list...")
+        labels: LabelData = load_labels_hf(repo_id=repo_id)
+
+        print("Creating data transform...")
+        transform = create_transform(
+            **resolve_data_config(model.pretrained_cfg, model=model)
+        )
+
+        return ({"model": model, "labels": labels, "transform": transform},)
+
+
 class WDv3Tagger:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "wdv3_model": ("WDV3_MODEL",),
                 "image": ("IMAGE",),
-                "model": ([k for k in MODEL_REPO_MAP.keys()],),
                 "gen_threshold": (
                     "FLOAT",
                     {
@@ -212,25 +248,14 @@ class WDv3Tagger:
     CATEGORY = "asaddi"
 
     def execute(
-        self, image: Tensor, model: str, gen_threshold: float, char_threshold: float
+        self, wdv3_model, image: Tensor, gen_threshold: float, char_threshold: float
     ):
+        labels = wdv3_model["labels"]
+        transform = wdv3_model["transform"]
+        model = wdv3_model["model"]
+
         torch_device = get_torch_device()
         offload_device = unet_offload_device()
-
-        repo_id = MODEL_REPO_MAP[model]
-
-        print(f"Loading model '{model}' from '{repo_id}'...")
-        model: nn.Module = timm.create_model("hf-hub:" + repo_id).eval()
-        state_dict = timm.models.load_state_dict_from_hf(repo_id)
-        model.load_state_dict(state_dict)
-
-        print("Loading tag list...")
-        labels: LabelData = load_labels_hf(repo_id=repo_id)
-
-        print("Creating data transform...")
-        transform = create_transform(
-            **resolve_data_config(model.pretrained_cfg, model=model)
-        )
 
         # move model to GPU, if available
         model = model.to(torch_device)
@@ -297,5 +322,6 @@ class WDv3Tagger:
 
 
 NODE_CLASS_MAPPINGS = {
+    "WDv3Model": WDv3Model,
     "WDv3Tagger": WDv3Tagger,
 }

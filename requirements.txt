@@ -1,0 +1,10 @@
+# Used by WDv3Tagger
+pandas
+timm
+
+# Probably already provided
+huggingface-hub
+numpy
+pillow
+torch
+torchvision

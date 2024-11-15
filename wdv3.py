@@ -205,6 +205,7 @@ class WDv3Tagger:
 
     RETURN_TYPES = ("STRING", "STRING", "STRING")
     RETURN_NAMES = ("general_tags", "char_tags", "rating_tags")
+    OUTPUT_IS_LIST = (True, True, True)
 
     FUNCTION = "execute"
 
@@ -231,57 +232,68 @@ class WDv3Tagger:
             **resolve_data_config(model.pretrained_cfg, model=model)
         )
 
-        print("Loading image and preprocessing...")
-        image = image.permute(0, 3, 1, 2)  # To [B,C,H,W]
+        # move model to GPU, if available
+        model = model.to(torch_device)
+
+        image = image.permute(0, 3, 1, 2)  # To [B,C,H,W], suitable for to_pil_image
+
+        # The output lists
+        general_tags = []
+        char_tags = []
+        rating_tags = []
+
         # TODO How to deal with batched images properly?
-        img_input = torchvision.transforms.functional.to_pil_image(image[0])
-        # ensure image is RGB
-        img_input = pil_ensure_rgb(img_input)
-        # pad to square with white background
-        img_input = pil_pad_square(img_input)
-        # run the model's input transform to convert to tensor and rescale
-        inputs: Tensor = transform(img_input).unsqueeze(0)
-        # NCHW image RGB to BGR
-        inputs = inputs[:, [2, 1, 0]]
+        for img in image:
+            print("Loading image and preprocessing...")
+            # This seems kinda dumb, but I'm going to treat transform like a
+            # blackbox and only feed it PIL images.
+            img_input = torchvision.transforms.functional.to_pil_image(img)
+            # ensure image is RGB
+            img_input = pil_ensure_rgb(img_input)
+            # pad to square with white background
+            img_input = pil_pad_square(img_input)
+            # run the model's input transform to convert to tensor and rescale
+            inputs: Tensor = transform(img_input).unsqueeze(0)
+            # NCHW image RGB to BGR
+            inputs = inputs[:, [2, 1, 0]]
 
-        print("Running inference...")
-        with torch.inference_mode():
-            # move model to GPU, if available
-            model = model.to(torch_device)
-            inputs = inputs.to(torch_device)
+            print("Running inference...")
+            with torch.inference_mode():
+                inputs = inputs.to(torch_device)
+                # run the model
+                outputs = model.forward(inputs)
+                # apply the final activation function (timm doesn't support doing this internally)
+                outputs = nn.functional.sigmoid(outputs)
+                # move output to CPU
+                outputs = outputs.to("cpu")
 
-            # run the model
-            outputs = model.forward(inputs)
-            # apply the final activation function (timm doesn't support doing this internally)
-            outputs = nn.functional.sigmoid(outputs)
+            print("Processing results...")
+            caption, taglist, ratings, character, general = get_tags(
+                probs=outputs.squeeze(0),
+                labels=labels,
+                gen_threshold=gen_threshold,
+                char_threshold=char_threshold,
+            )
 
-            # move inputs, outputs, and model back to to cpu if we were on GPU
-            inputs = inputs.to(offload_device)
-            outputs = outputs.to("cpu")
-            model = model.to(offload_device)
+            general_tags.append(format_tags(general))
+            char_tags.append(format_tags(character))
 
-        print("Processing results...")
-        caption, taglist, ratings, character, general = get_tags(
-            probs=outputs.squeeze(0),
-            labels=labels,
-            gen_threshold=gen_threshold,
-            char_threshold=char_threshold,
-        )
+            # The rating tags are static making their probability/confidence
+            # level significant.
+            # I'm not sure of a good textual format for them yet, so I'll
+            # just go with this for now. See RatingDisplay.formatted
+            output_ratings = [
+                RatingDisplay(label=label, value=value)
+                for label, value in ratings.items()
+            ]
+            output_ratings.sort(key=lambda x: x.value, reverse=True)
 
-        # The rating tags are static making their probability/confidence
-        # level significant.
-        # I'm not sure of a good textual format for them yet, so I'll
-        # just go with this for now.
-        output_ratings = [
-            RatingDisplay(label=label, value=value) for label, value in ratings.items()
-        ]
-        output_ratings.sort(key=lambda x: x.value, reverse=True)
+            rating_tags.append(", ".join([r.formatted for r in output_ratings]))
 
-        return (
-            format_tags(general),
-            format_tags(character),
-            ", ".join([r.formatted for r in output_ratings]),
-        )
+        # move model to offload device
+        model = model.to(offload_device)
+
+        return (general_tags, char_tags, rating_tags)
 
 
 NODE_CLASS_MAPPINGS = {

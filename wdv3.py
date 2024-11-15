@@ -156,6 +156,25 @@ def pad_square(image: Tensor) -> Tensor:
     return canvas
 
 
+def format_tags(tags) -> str:
+    return (
+        ", ".join([x for x in tags])
+        .replace("_", " ")
+        .replace("(", r"\(")
+        .replace(")", r"\)")
+    )
+
+
+@dataclass
+class RatingDisplay:
+    label: str
+    value: float
+
+    @property
+    def formatted(self):
+        return f"{self.label}:{self.value:.3f}"
+
+
 class WDv3Tagger:
     @classmethod
     def INPUT_TYPES(cls):
@@ -249,12 +268,19 @@ class WDv3Tagger:
             char_threshold=char_threshold,
         )
 
+        # The rating tags are static making their probability/confidence
+        # level significant.
+        # I'm not sure of a good textual format for them yet, so I'll
+        # just go with this for now.
+        output_ratings = [
+            RatingDisplay(label=label, value=value) for label, value in ratings.items()
+        ]
+        output_ratings.sort(key=lambda x: x.value, reverse=True)
+
         return (
-            ", ".join([k for k in general]),
-            ", ".join([k for k in character]),
-            # FIXME This isn't working like the other two, probably because there's no threshold.
-            # Probably more of a confidence level
-            ", ".join([k for k in ratings]),
+            format_tags(general),
+            format_tags(character),
+            ", ".join([r.formatted for r in output_ratings]),
         )
 
 

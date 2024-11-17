@@ -2,6 +2,9 @@
 pandas
 timm
 
+# Used by LPIPSRun
+lpips
+
 # Probably already provided
 huggingface-hub
 numpy

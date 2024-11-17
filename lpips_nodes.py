@@ -74,18 +74,26 @@ class LPIPSRun:
         # TODO batching is going to be crazy. Just do cross product of
         # reference batches X image batches?!
         # Actually, what does lpips do with batches under the hood?!
+        # A: As long as reference's B=1, it seems to do the right thing.
+        # All bets are off when reference is batched, what is it doing?
         spatial_map: torch.Tensor = lpips_model(reference, image)
 
         lpips_model.to(offload_device)
 
         spatial_map = spatial_map.cpu()
+        # NB This is across the entire batch, so it will be wrong for batches
         image_loss = float(spatial_map.mean())
         print(f"image_loss = {image_loss:.3f}")
 
-        # Convert spatial distance map [B,C,H,W] (C=1)
-        # to ComfyUI image [B,H,W,C] (C=3)
-        spatial_map = spatial_map.repeat(1, 3, 1, 1).to(torch.float32)
-        spatial_map = spatial_map.permute(0, 2, 3, 1)
+        # Convert spatial distance map [B,C,H,W] (C=1) to [B,H,W,C] (C=1)
+        spatial_map = spatial_map.permute(0, 2, 3, 1).to(torch.float32)
+
+        # Let's color it an obnoxious yellow for the hell of it
+        # (TODO make it configurable?)
+        # Apparently #ccff00 is a popular consensus for fluorescent yellow
+        color = torch.tensor([0xCC/255., 1., 0.])
+        spatial_map = color * spatial_map
+        # It should now be [B,H,W,C] (C=3)
 
         # TODO include image_loss in outputs?
         return {"ui": {"image_loss": (image_loss,)}, "result": (spatial_map,)}

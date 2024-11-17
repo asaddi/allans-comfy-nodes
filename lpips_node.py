@@ -61,6 +61,9 @@ class LPIPSRun:
         torch_device = get_torch_device()
         offload_device = unet_offload_device()
 
+        if reference.shape[1:2] != image.shape[1:2]:
+            raise ValueError("reference and image must have identical dimensions")
+
         reference = prepare_image(reference)
         image = prepare_image(image)
 
@@ -70,13 +73,14 @@ class LPIPSRun:
 
         # TODO batching is going to be crazy. Just do cross product of
         # reference batches X image batches?!
+        # Actually, what does lpips do with batches under the hood?!
         spatial_map: torch.Tensor = lpips_model(reference, image)
 
         lpips_model.to(offload_device)
 
         spatial_map = spatial_map.cpu()
         image_loss = float(spatial_map.mean())
-        print(f"lpips loss = {image_loss:.3f}")
+        print(f"image_loss = {image_loss:.3f}")
 
         # Convert spatial distance map [B,C,H,W] (C=1)
         # to ComfyUI image [B,H,W,C] (C=3)

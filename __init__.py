@@ -1,16 +1,17 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from .nodes import NODE_CLASS_MAPPINGS
 
-if True:
+try:
     from . import wdv3
 
     NODE_CLASS_MAPPINGS.update(wdv3.NODE_CLASS_MAPPINGS)
+except ImportError:
+    pass
 
 try:
-    import lpips
-    from . import lpips_node
+    from . import lpips_nodes
 
-    NODE_CLASS_MAPPINGS.update(lpips_node.NODE_CLASS_MAPPINGS)
+    NODE_CLASS_MAPPINGS.update(lpips_nodes.NODE_CLASS_MAPPINGS)
 except ImportError:
     pass
 

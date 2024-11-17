@@ -28,7 +28,7 @@ class CLIPDistance:
         print(clip1)
         print(clip2)
         dist = torch.dist(clip1, clip2)
-        print(f"CLIP distance = {dist:f}")
+        print(f"CLIP distance = {dist}")
 
         return ()
 

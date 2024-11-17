@@ -15,6 +15,13 @@ try:
 except ImportError:
     pass
 
+try:
+    from . import experimental
+
+    NODE_CLASS_MAPPINGS.update(experimental.NODE_CLASS_MAPPINGS)
+except ImportError:
+    pass
+
 NODE_DISPLAY_NAME_MAPPINGS = {k: v.TITLE for k, v in NODE_CLASS_MAPPINGS.items()}
 
 WEB_DIRECTORY = "./js"

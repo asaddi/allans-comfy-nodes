@@ -6,6 +6,14 @@ if True:
 
     NODE_CLASS_MAPPINGS.update(wdv3.NODE_CLASS_MAPPINGS)
 
+try:
+    import lpips
+    from . import lpips_node
+
+    NODE_CLASS_MAPPINGS.update(lpips_node.NODE_CLASS_MAPPINGS)
+except ImportError:
+    pass
+
 NODE_DISPLAY_NAME_MAPPINGS = {k: v.TITLE for k, v in NODE_CLASS_MAPPINGS.items()}
 
 # WEB_DIRECTORY = "./js"

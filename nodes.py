@@ -10,18 +10,30 @@ class SimpleBus:
         return {
             "optional": {
                 "bus": ("SIMPLEBUS",),
-                "model": ("MODEL", {
-                    "lazy": True,
-                }),
-                "vae": ("VAE", {
-                    "lazy": True,
-                }),
-                "latent": ("LATENT", {
-                    "lazy": True,
-                }),
-                "guider": ("GUIDER", {
-                    "lazy": True,
-                }),
+                "model": (
+                    "MODEL",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "vae": (
+                    "VAE",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "latent": (
+                    "LATENT",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "guider": (
+                    "GUIDER",
+                    {
+                        "lazy": True,
+                    },
+                ),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -41,27 +53,34 @@ class SimpleBus:
     @staticmethod
     def get_node_info(extra_pnginfo, node_id) -> dict:
         node_id = int(node_id)
-        for node_info in extra_pnginfo['workflow']['nodes']:
-            if node_info['id'] == node_id:
+        for node_info in extra_pnginfo["workflow"]["nodes"]:
+            if node_info["id"] == node_id:
                 return node_info
         # WTF is this?
-        raise RuntimeError(f'Node missing from workflow: {node_id}')
+        raise RuntimeError(f"Node missing from workflow: {node_id}")
 
     @staticmethod
     def is_output_connected(node_info, out_type) -> bool:
-        outputs = node_info.get('outputs', [])
-        return any([
-            True for output in outputs
-            if output['type'] == out_type and output['links']  # can be empty list as well
-        ])
+        outputs = node_info.get("outputs", [])
+        return any(
+            [
+                True
+                for output in outputs
+                if output["type"] == out_type
+                and output["links"]  # can be empty list as well
+            ]
+        )
 
     @staticmethod
     def is_input_connected(node_info, in_type) -> bool:
-        inputs = node_info.get('inputs', [])
-        return any([
-            True for input in inputs
-            if input['type'] == in_type and input['link'] is not None
-        ])
+        inputs = node_info.get("inputs", [])
+        return any(
+            [
+                True
+                for input in inputs
+                if input["type"] == in_type and input["link"] is not None
+            ]
+        )
 
     @staticmethod
     def get_downstream_nodes(extra_pnginfo, node_id, info_cache):
@@ -75,37 +94,53 @@ class SimpleBus:
             downstream.append(check_id)
 
             if (node_info := info_cache.get(check_id)) is None:
-                node_info = info_cache[check_id] = SimpleBus.get_node_info(extra_pnginfo, check_id)
+                node_info = info_cache[check_id] = SimpleBus.get_node_info(
+                    extra_pnginfo, check_id
+                )
 
-            outputs = node_info.get('outputs', [])
-            bus_out = [
-                out['links'] for out in outputs
-                if out['type'] == 'SIMPLEBUS'
-            ][0]
+            outputs = node_info.get("outputs", [])
+            bus_out = [out["links"] for out in outputs if out["type"] == "SIMPLEBUS"][0]
             if bus_out:
                 # NB There can be multiple outputs
                 out_ids = [
-                    link[3] for link in extra_pnginfo['workflow']['links']
+                    link[3]
+                    for link in extra_pnginfo["workflow"]["links"]
                     if link[0] in bus_out
                 ]
                 to_check.extend(out_ids)
 
         return downstream
 
-    def _check_downstream_for_type(self, downstream, info_cache, type_name, input_value) -> bool:
-        if SimpleBus.is_input_connected(info_cache[downstream[0]], type_name) and input_value is None:
+    def _check_downstream_for_type(
+        self, downstream, info_cache, type_name, input_value
+    ) -> bool:
+        if (
+            SimpleBus.is_input_connected(info_cache[downstream[0]], type_name)
+            and input_value is None
+        ):
             for check_id in downstream:
                 check_info = info_cache[check_id]
                 if SimpleBus.is_output_connected(check_info, type_name):
                     return True
         return False
 
-    def check_lazy_status(self, unique_id, extra_pnginfo, bus=None, model=None, vae=None, latent=None, guider=None):
+    def check_lazy_status(
+        self,
+        unique_id,
+        extra_pnginfo,
+        bus=None,
+        model=None,
+        vae=None,
+        latent=None,
+        guider=None,
+    ):
         unique_id = int(unique_id)
 
         # TODO do all this lazily
         info_cache = {}
-        downstream = SimpleBus.get_downstream_nodes(extra_pnginfo, unique_id, info_cache)
+        downstream = SimpleBus.get_downstream_nodes(
+            extra_pnginfo, unique_id, info_cache
+        )
 
         # Note: bus is not lazy (but it is optional)
 
@@ -129,7 +164,16 @@ class SimpleBus:
         # print(f"SimpleBus #{unique_id} needed: {needed}")
         return needed
 
-    def execute(self, unique_id, extra_pnginfo, bus=None, model=None, vae=None, latent=None, guider=None):
+    def execute(
+        self,
+        unique_id,
+        extra_pnginfo,
+        bus=None,
+        model=None,
+        vae=None,
+        latent=None,
+        guider=None,
+    ):
         if bus is None:
             bus = {}
 

@@ -91,7 +91,7 @@ class LPIPSRun:
         # Let's color it an obnoxious yellow for the hell of it
         # (TODO make it configurable?)
         # Apparently #ccff00 is a popular consensus for fluorescent yellow
-        color = torch.tensor([0xCC/255., 1., 0.])
+        color = torch.tensor([0xCC / 255.0, 1.0, 0.0])
         spatial_map = color * spatial_map
         # It should now be [B,H,W,C] (C=3)
 

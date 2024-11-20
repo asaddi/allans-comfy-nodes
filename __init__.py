@@ -2,9 +2,9 @@
 from .nodes import NODE_CLASS_MAPPINGS
 
 try:
-    from . import wdv3
+    from . import wdv3_nodes
 
-    NODE_CLASS_MAPPINGS.update(wdv3.NODE_CLASS_MAPPINGS)
+    NODE_CLASS_MAPPINGS.update(wdv3_nodes.NODE_CLASS_MAPPINGS)
 except ImportError:
     pass
 

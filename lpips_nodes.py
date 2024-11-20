@@ -19,7 +19,7 @@ class LPIPSModel:
 
     FUNCTION = "load"
 
-    CATEGORY = "asaddi"
+    CATEGORY = "private/lpips"
 
     def load(self, net: str):
         loss_fn = lpips.LPIPS(net=net, spatial=True)
@@ -53,7 +53,7 @@ class LPIPSRun:
 
     FUNCTION = "calculate"
 
-    CATEGORY = "asaddi"
+    CATEGORY = "private/lpips"
 
     def calculate(
         self, lpips_model: lpips.LPIPS, reference: torch.Tensor, image: torch.Tensor

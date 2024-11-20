@@ -48,7 +48,7 @@ class SimpleBus:
 
     FUNCTION = "execute"
 
-    CATEGORY = "asaddi"
+    CATEGORY = "private"
 
     @staticmethod
     def get_node_info(extra_pnginfo, node_id) -> dict:
@@ -317,7 +317,7 @@ class ReproducibleWildcards:
 
     FUNCTION = "execute"
 
-    CATEGORY = "asaddi"
+    CATEGORY = "private"
 
     def execute(self, text: str, seed: int):
         parsed = parse_wildcards(text)
@@ -383,7 +383,7 @@ class ResolutionChooser:
 
     FUNCTION = "calculate"
 
-    CATEGORY = "asaddi"
+    CATEGORY = "private"
 
     @staticmethod
     def _round(size: int, step: int, up: bool = True) -> int:

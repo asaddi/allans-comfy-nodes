@@ -18,7 +18,7 @@ class CLIPDistance:
 
     FUNCTION = "calculate"
 
-    CATEGORY = "asaddi/experimental"
+    CATEGORY = "private/experimental"
 
     def calculate(self, clip1, clip2):
         clip1: torch.Tensor = clip1[0][0]

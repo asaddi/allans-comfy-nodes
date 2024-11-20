@@ -190,7 +190,7 @@ class WDv3Model:
 
     FUNCTION = "execute"
 
-    CATEGORY = "asaddi"
+    CATEGORY = "private/wdv3"
 
     def execute(self, model):
         repo_id = MODEL_REPO_MAP[model]
@@ -245,7 +245,7 @@ class WDv3Tagger:
 
     FUNCTION = "execute"
 
-    CATEGORY = "asaddi"
+    CATEGORY = "private/wdv3"
 
     def execute(
         self, wdv3_model, image: Tensor, gen_threshold: float, char_threshold: float

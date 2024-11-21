@@ -8,6 +8,9 @@ from comfy_execution.graph import ExecutionBlocker
 # A clean-room low-rent copy of rgthree's seed node.
 class PrivateSeed:
     SEED_MIN = 0
+    # Note: This is 1 less than what it should be because otherwise on
+    # JavaScript side, we cannot generate a random number using
+    # Math.random() that is inclusive of the max
     SEED_MAX = 2**53 - 2  # JavaScript's Number.MAX_SAFE_INTEGER-1
 
     _random = Random()

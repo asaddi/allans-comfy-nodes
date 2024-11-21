@@ -3,7 +3,14 @@ import { api } from "../../scripts/api.js";
 app.registerExtension({
 	name: "private.nodes",
 	async nodeCreated(node) {
-		if (node?.comfyClass === "LPIPSRun") {
+		if (node?.comfyClass === "ResolutionChooser") {
+			const pixelsWidget = node.widgets.find(
+				(w) => w.name === "megapixels"
+			);
+			pixelsWidget.label = "mebipixels";
+		}
+
+		else if (node?.comfyClass === "LPIPSRun") {
 			node.addWidget(
 				"number",
 				"image_loss",
@@ -16,7 +23,7 @@ app.registerExtension({
 			);
 		}
 
-		if (node?.comfyClass === "PrivateSeed") {
+		else if (node?.comfyClass === "PrivateSeed") {
 			// rename seed widget
 			const seedWidget = node.widgets.find((w) => w.name === "seed_value");
 			seedWidget.label = "seed";
@@ -75,7 +82,7 @@ app.registerExtension({
 				app.graph.setDirtyCanvas(true, false);
 			}
 
-			if (node?.comfyClass === "PrivateSeed") {
+			else if (node?.comfyClass === "PrivateSeed") {
 				const histWidget = node.widgets.find(
 					(w) => w.name === "♻️previous seed"
 				);

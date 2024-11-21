@@ -22,11 +22,12 @@ from comfy.model_management import get_torch_device, unet_offload_device
 # Much of this generously lifted from https://github.com/neggles/wdv3-timm @ 2f49e85e
 # No license?!
 
-MODEL_REPO_MAP = OrderedDict(
-    vit="SmilingWolf/wd-vit-tagger-v3",
-    swinv2="SmilingWolf/wd-swinv2-tagger-v3",
-    convnext="SmilingWolf/wd-convnext-tagger-v3",
-)
+MODEL_REPO_MAP = OrderedDict([
+    ("vit-large", "SmilingWolf/wd-vit-large-tagger-v3"),
+    ("vit", "SmilingWolf/wd-vit-tagger-v3"),
+    ("swinv2", "SmilingWolf/wd-swinv2-tagger-v3"),
+    ("convnext", "SmilingWolf/wd-convnext-tagger-v3"),
+])
 
 
 @dataclass

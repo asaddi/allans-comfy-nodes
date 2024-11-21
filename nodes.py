@@ -1,7 +1,76 @@
 from enum import Enum, auto
 import math
+from random import Random
 
 from comfy_execution.graph import ExecutionBlocker
+
+
+# A clean-room low-rent copy of rgthree's seed node.
+class PrivateSeed:
+    SEED_MIN = 0
+    SEED_MAX = 2**53 - 2  # JavaScript's Number.MAX_SAFE_INTEGER-1
+
+    _random = Random()
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                # Avoid calling it "seed" or "noise_seed" so we don't get all
+                # the extra widgets.
+                "seed_value": (
+                    "INT",
+                    {
+                        "min": -1,
+                        "max": cls.SEED_MAX,
+                        "default": -1,
+                    },
+                ),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    @classmethod
+    def IS_CHANGED(cls, seed_value, **kwargs):
+        if seed_value == -1:
+            # It will be a random value, make sure we execute
+            return float("nan")
+        else:
+            # Note: There's a minor inefficiency because the
+            # frontend can change the seed w/o our knowledge.
+            # It just means we execute needlessly once.
+            return seed_value
+
+    TITLE = "Seed (private)"
+
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("seed",)
+
+    FUNCTION = "run"
+
+    CATEGORY = "private"
+
+    def run(self, seed_value, unique_id, extra_pnginfo):
+        if seed_value == -1:
+            # Generate seed at random
+            seed_value = self._random.randint(self.SEED_MIN, self.SEED_MAX)
+
+        # print(f"seed_value (#{unique_id}) = {seed_value}")
+
+        # store this value in extra_pnginfo, so it gets serialized in the
+        # metadata
+        unique_id = int(unique_id)
+        my_info = [
+            node_info
+            for node_info in extra_pnginfo["workflow"]["nodes"]
+            if node_info["id"] == unique_id
+        ][0]
+        my_info["widgets_values"] = [seed_value]
+
+        return {"ui": {"seed_value": (seed_value,)}, "result": (seed_value,)}
 
 
 class SimpleBus:
@@ -438,6 +507,7 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
+    "PrivateSeed": PrivateSeed,
     "SimpleBus": SimpleBus,
     "ReproducibleWildcards": ReproducibleWildcards,
     "ResolutionChooser": ResolutionChooser,

@@ -29,8 +29,11 @@ class ModelManager:
     _CONFIG_DEFAULT = "models.yaml.default"
 
     def __init__(
-        self, models_subdir: str | None = None, allowed_files: list[str] | None = None,
-        config_file: str | None = None, default_config_file: str | None = None,
+        self,
+        models_subdir: str | None = None,
+        allowed_files: list[str] | None = None,
+        config_file: str | None = None,
+        default_config_file: str | None = None,
     ):
         if models_subdir is not None:
             self._MODELS_SUBDIR = models_subdir

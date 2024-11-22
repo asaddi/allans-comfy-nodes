@@ -3,7 +3,7 @@ import torch
 
 # Note: Current as of 7f2e0274
 from .depth_anything_v2.dpt import DepthAnythingV2
-from .models import *
+from .models import ModelManager
 
 from comfy.model_management import get_torch_device, unet_offload_device
 
@@ -18,10 +18,18 @@ MODELS.load()
 
 
 model_configs = {
-    'vits': {'encoder': 'vits', 'features': 64, 'out_channels': [48, 96, 192, 384]},
-    'vitb': {'encoder': 'vitb', 'features': 128, 'out_channels': [96, 192, 384, 768]},
-    'vitl': {'encoder': 'vitl', 'features': 256, 'out_channels': [256, 512, 1024, 1024]},
-    'vitg': {'encoder': 'vitg', 'features': 384, 'out_channels': [1536, 1536, 1536, 1536]}
+    "vits": {"encoder": "vits", "features": 64, "out_channels": [48, 96, 192, 384]},
+    "vitb": {"encoder": "vitb", "features": 128, "out_channels": [96, 192, 384, 768]},
+    "vitl": {
+        "encoder": "vitl",
+        "features": 256,
+        "out_channels": [256, 512, 1024, 1024],
+    },
+    "vitg": {
+        "encoder": "vitg",
+        "features": 384,
+        "out_channels": [1536, 1536, 1536, 1536],
+    },
 }
 
 
@@ -47,7 +55,13 @@ class DepthAnythingV2Model:
         model_path = Path(MODELS.download(model_name))
 
         model = DepthAnythingV2(**model_configs[model_name])
-        model.load_state_dict(torch.load(model_path / f'depth_anything_v2_{model_name}.pth', weights_only=True, map_location='cpu'))
+        model.load_state_dict(
+            torch.load(
+                model_path / f"depth_anything_v2_{model_name}.pth",
+                weights_only=True,
+                map_location="cpu",
+            )
+        )
         model.eval()
 
         return (model,)
@@ -76,7 +90,7 @@ class DepthAnythingV2Node:
         offload_device = unet_offload_device()
 
         # model expects 8-bit BGR
-        image = (255. * image).clamp(0, 255).to(torch.uint8)
+        image = (255.0 * image).clamp(0, 255).to(torch.uint8)
         # Switch from RGB to BGR
         image = image[:, :, :, [2, 1, 0]]
 

@@ -1,0 +1,12 @@
+models:
+  - name: vitl
+    repo_id: depth-anything/Depth-Anything-V2-Large
+    use_hf_cache: true
+
+  - name: vitb
+    repo_id: depth-anything/Depth-Anything-V2-Base
+    use_hf_cache: true
+
+  - name: vits
+    repo_id: depth-anything/Depth-Anything-V2-Small
+    use_hf_cache: true

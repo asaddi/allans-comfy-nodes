@@ -5,9 +5,14 @@ timm
 # Used by LPIPSRun
 lpips
 
+# Used by DepthAnythingV2
+opencv-python
+pydantic
+
 # Probably already provided
 huggingface-hub
 numpy
 pillow
 torch
 torchvision
+pyyaml

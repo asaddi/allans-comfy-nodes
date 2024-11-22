@@ -22,6 +22,13 @@ try:
 except ImportError:
     pass
 
+try:
+    from . import dav2_nodes
+
+    NODE_CLASS_MAPPINGS.update(dav2_nodes.NODE_CLASS_MAPPINGS)
+except ImportError:
+    pass
+
 NODE_DISPLAY_NAME_MAPPINGS = {k: v.TITLE for k, v in NODE_CLASS_MAPPINGS.items()}
 
 WEB_DIRECTORY = "./js"

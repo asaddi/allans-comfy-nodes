@@ -1,6 +1,7 @@
 from pathlib import Path
 import torch
 
+# Note: Current as of 7f2e0274
 from .depth_anything_v2.dpt import DepthAnythingV2
 from .models import *
 
@@ -74,29 +75,38 @@ class DepthAnythingV2Node:
         torch_device = get_torch_device()
         offload_device = unet_offload_device()
 
+        # model expects 8-bit BGR
+        image = (255. * image).clamp(0, 255).to(torch.uint8)
+        # Switch from RGB to BGR
+        image = image[:, :, :, [2, 1, 0]]
+
         dav2_model.to(torch_device)
 
-        img = (255. * image).clamp(0, 255).to(torch.uint8)
-        # Select first image in batch (batching TODO)
-        # And switch from RGB to BGR
-        img = img[0, :, :, [2, 1, 0]]
+        depth_maps = []
+        for img in image:
+            # Note: It expects a numpy array.
+            # But it will convert it to a tensor and conditionally move
+            # it to cuda/mps/cpu. So the model better be in the same place!
+            depth = dav2_model.infer_image(img.numpy())
 
-        depth = dav2_model.infer_image(img.numpy())
+            # Note: And we get back a numpy array
+            depth = torch.tensor(depth, dtype=torch.float32)
+            # Rescale to [0, 1]
+            depth = (depth - depth.min()) / (depth.max() - depth.min())
+            # From [H,W] to [H,W,C] where C=1
+            depth = depth.unsqueeze(-1)
+            # Repeat channel for grayscale
+            # TODO Demo app uses matplotlib's Spectral_r colormap, do we want that instead?
+            # A: It's fine, leaving it grayscale is fine.
+            depth = depth.repeat(1, 1, 3)
+            # Finally, make batch of 1...
+            depth = depth.unsqueeze(0)
+
+            depth_maps.append(depth)
 
         dav2_model.to(offload_device)
 
-        depth = torch.tensor(depth, dtype=torch.float32)
-        # Rescale to [0, 1]
-        depth = (depth - depth.min()) / (depth.max() - depth.min())
-        # From [H,W] to [H,W,C] where C=1
-        depth = depth.unsqueeze(-1)
-        # Repeat channel for grayscale
-        # TODO Demo app uses matplotlib's Spectral_r colormap, do we want that instead?
-        depth = depth.repeat(1, 1, 3)
-        # Finally, make batch of 1...
-        depth = depth.unsqueeze(0)
-
-        return (depth,)
+        return (torch.cat(depth_maps),)
 
 
 NODE_CLASS_MAPPINGS = {

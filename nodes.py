@@ -1,6 +1,5 @@
 from enum import Enum, auto
 import math
-from random import Random
 
 from comfy_execution.graph import ExecutionBlocker
 
@@ -13,8 +12,6 @@ class PrivateSeed:
     # Math.random() that is inclusive of the max
     SEED_MAX = 2**53 - 2  # JavaScript's Number.MAX_SAFE_INTEGER-1
 
-    _random = Random()
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -24,9 +21,9 @@ class PrivateSeed:
                 "seed_value": (
                     "INT",
                     {
-                        "min": -1,
+                        "min": cls.SEED_MIN,
                         "max": cls.SEED_MAX,
-                        "default": -1,
+                        "default": cls.SEED_MIN,
                     },
                 ),
             },
@@ -37,15 +34,8 @@ class PrivateSeed:
         }
 
     @classmethod
-    def IS_CHANGED(cls, seed_value, **kwargs):
-        if seed_value == -1:
-            # It will be a random value, make sure we execute
-            return float("nan")
-        else:
-            # Note: There's a minor inefficiency because the
-            # frontend can change the seed w/o our knowledge.
-            # It just means we execute needlessly once.
-            return seed_value
+    def IS_CHANGED(cls, seed_value, unique_id, extra_pnginfo):
+        return seed_value
 
     TITLE = "Seed (private)"
 
@@ -57,22 +47,18 @@ class PrivateSeed:
     CATEGORY = "private"
 
     def run(self, seed_value, unique_id, extra_pnginfo):
-        if seed_value == -1:
-            # Generate seed at random
-            seed_value = self._random.randint(self.SEED_MIN, self.SEED_MAX)
-
         # print(f"seed_value (#{unique_id}) = {seed_value}")
 
-        # store this value in extra_pnginfo, so it gets serialized in the
-        # metadata
+        # In the metadata, change this node into a fixed seed
         unique_id = int(unique_id)
         my_info = [
             node_info
             for node_info in extra_pnginfo["workflow"]["nodes"]
             if node_info["id"] == unique_id
         ][0]
-        my_info["widgets_values"] = [seed_value]
+        my_info["properties"]["randomizeSeed"] = False
 
+        # pass the value back up to the UI so it can update the button
         return {"ui": {"seed_value": (seed_value,)}, "result": (seed_value,)}
 
 

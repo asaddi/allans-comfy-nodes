@@ -24,48 +24,59 @@ app.registerExtension({
 		}
 
 		else if (node?.comfyClass === "PrivateSeed") {
+			node.properties.randomizeSeed = true;
+
 			// rename seed widget
 			const seedWidget = node.widgets.find((w) => w.name === "seed_value");
 			seedWidget.label = "seed";
 
+			const newSeed = () => {
+				seedWidget.value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+			}
+			newSeed();
+
 			// add extra buttons
-			node.addWidget(
+			const randomWidget = node.addWidget(
 				"button",
-				"🎲always randomize",
+				"randomize",
 				"randomize",
 				function () {
-					seedWidget.value = -1;
+					node.properties.randomizeSeed = true;
+					newSeed();
 				},
 				{
 					serialize: false,
 				}
 			);
+			randomWidget.label = "🎲always randomize";
 
-			node.addWidget(
+			const fixedWidget = node.addWidget(
 				"button",
-				"🎲new fixed seed",
+				"fixed",
 				"fixed",
 				function () {
-					// going to run into JavaScript number limitations
-					// use API instead? (ugh)
-					seedWidget.value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+					node.properties.randomizeSeed = false;
+					newSeed();
 				},
 				{
 					serialize: false,
 				}
 			);
+			fixedWidget.label = "🎲new fixed seed";
 
 			const histWidget = node.addWidget(
 				"button",
-				"♻️previous seed",
+				"previous",
 				"previous",
 				function () {
+					node.properties.randomizeSeed = false;
 					seedWidget.value = this.value;
 				},
 				{
 					serialize: false,
 				}
 			);
+			histWidget.label = "♻️previous seed";
 			histWidget.disabled = true;
 		}
 	},
@@ -84,12 +95,20 @@ app.registerExtension({
 
 			else if (node?.comfyClass === "PrivateSeed") {
 				const histWidget = node.widgets.find(
-					(w) => w.name === "♻️previous seed"
+					(w) => w.name === "previous"
 				);
+
 				const values = event.detail.output.seed_value;
 				histWidget.value = values[values.length - 1];
 				histWidget.label = `♻️${histWidget.value}`;
 				histWidget.disabled = false;
+
+				const seedWidget = node.widgets.find(
+					(w) => w.name === "seed_value"
+				);
+				if (node.properties.randomizeSeed) {
+					seedWidget.value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+				}
 			}
 		});
 	},

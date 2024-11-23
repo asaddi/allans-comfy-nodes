@@ -6,6 +6,72 @@ import torch
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
+import folder_paths
+
+
+class PrivateLoraStack:
+    LORA_STACK_COUNT = 4
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "required": {
+                "model": ("MODEL",),
+                "clip": ("CLIP",),
+            }
+        }
+
+        for index in range(cls.LORA_STACK_COUNT):
+            d["required"][f"lora_name_{index}"] = (
+                ["None"] + folder_paths.get_filename_list("loras"),
+            )
+            d["required"][f"strength_{index}"] = (
+                "FLOAT",
+                {
+                    "default": 1.0,
+                    "min": -100.0,
+                    "max": 100.0,
+                    "step": 0.01,
+                },
+            )
+
+        return d
+
+    TITLE = "Lora Stack (private)"
+
+    RETURN_TYPES = ("MODEL", "CLIP")
+
+    FUNCTION = "load_loras"
+
+    CATEGORY = "private/loaders"
+
+    def load_loras(self, model, clip, **kwargs):
+        graph = GraphBuilder()
+        stack = []
+        for index in range(self.LORA_STACK_COUNT):
+            lora_name = kwargs[f"lora_name_{index}"]
+            strength = kwargs[f"strength_{index}"]
+
+            if lora_name == "None" or strength == 0.0:
+                continue
+
+            node = graph.node(
+                "LoraLoader",
+                model=model,
+                clip=clip,
+                lora_name=lora_name,
+                strength_model=strength,
+                strength_clip=strength,
+            )
+            stack.append(node)
+
+            model = node.out(0)
+            clip = node.out(1)
+
+        return {
+            "result": (model, clip),
+            "expand": graph.finalize(),
+        }
 
 
 class StyleModelApplyStrength:
@@ -590,6 +656,7 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
+    "PrivateLoraStack": PrivateLoraStack,
     "StyleModelApplyStrength": StyleModelApplyStrength,
     "DumpToConsole": DumpToConsole,
     "PrivateSeed": PrivateSeed,

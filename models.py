@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from huggingface_hub import snapshot_download
@@ -8,7 +7,7 @@ import yaml
 import folder_paths
 
 
-BASE_NAME = os.path.realpath(os.path.dirname(__file__))
+BASE_NAME = Path(__file__).parent.resolve()
 
 
 class ModelDefinition(BaseModel):
@@ -44,10 +43,10 @@ class ModelManager:
         if default_config_file is not None:
             self._CONFIG_DEFAULT = default_config_file
 
-    def _get_models_file(self) -> str:
-        models_file = os.path.join(BASE_NAME, self._CONFIG)
-        if not os.path.exists(models_file):
-            models_file = os.path.join(BASE_NAME, self._CONFIG_DEFAULT)
+    def _get_models_file(self) -> Path:
+        models_file = Path(BASE_NAME) / self._CONFIG
+        if not models_file.exists():
+            models_file = Path(BASE_NAME) / self._CONFIG_DEFAULT
         return models_file
 
     def load(self):
@@ -55,7 +54,7 @@ class ModelManager:
 
         with open(models_file) as inp:
             d = yaml.load(inp, yaml.Loader)
-        self._mtime = (models_file, os.path.getmtime(models_file))
+        self._mtime = (models_file, models_file.stat().st_mtime)
 
         self.LIST = []
         for value in d["models"]:
@@ -67,32 +66,34 @@ class ModelManager:
 
     def refresh(self):
         models_file = self._get_models_file()
-        if self._mtime != (models_file, os.path.getmtime(models_file)):
+        if self._mtime != (models_file, models_file.stat().st_mtime):
             self.load()
 
     def download(self, name: str) -> Path:
         model_def = self.BY_NAME[name]
 
-        if os.path.exists(model_def.repo_id):
+        if (as_dir := Path(model_def.repo_id)).is_dir():
             # Local path, nothing to do
-            return model_def.repo_id
+            return as_dir
 
         if model_def.use_hf_cache:
             # Easy peasy
-            return snapshot_download(
-                model_def.repo_id,
-                revision=model_def.revision,
-                allow_patterns=self._ALLOWED_FILES,
+            return Path(
+                snapshot_download(
+                    model_def.repo_id,
+                    revision=model_def.revision,
+                    allow_patterns=self._ALLOWED_FILES,
+                )
             )
         else:
             dir_name = "--".join(model_def.repo_id.split("/"))
-            model_path = os.path.join(
-                folder_paths.models_dir, self._MODELS_SUBDIR, dir_name
-            )
-            os.makedirs(model_path, exist_ok=True)
-            return snapshot_download(
-                model_def.repo_id,
-                revision=model_def.revision,
-                allow_patterns=self._ALLOWED_FILES,
-                local_dir=model_path,
+            model_path = Path(folder_paths.models_dir) / self._MODELS_SUBDIR / dir_name
+            model_path.mkdir(parents=True, exist_ok=True)
+            return Path(
+                snapshot_download(
+                    model_def.repo_id,
+                    revision=model_def.revision,
+                    allow_patterns=self._ALLOWED_FILES,
+                    local_dir=model_path,
+                )
             )

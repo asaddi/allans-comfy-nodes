@@ -364,10 +364,10 @@ class SimpleBus:
 
         return (
             bus,
-            bus.get("model", ExecutionBlocker("MODEL not present on bus")),
-            bus.get("vae", ExecutionBlocker("VAE not present on bus")),
-            bus.get("latent", ExecutionBlocker("LATENT not present on bus")),
-            bus.get("guider", ExecutionBlocker("GUIDER not present on bus")),
+            bus.get("model") or ExecutionBlocker("MODEL not present on bus"),
+            bus.get("vae") or ExecutionBlocker("VAE not present on bus"),
+            bus.get("latent") or ExecutionBlocker("LATENT not present on bus"),
+            bus.get("guider") or ExecutionBlocker("GUIDER not present on bus"),
         )
 
 

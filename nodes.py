@@ -5,37 +5,54 @@ from pprint import pprint
 import torch
 
 from comfy_execution.graph import ExecutionBlocker
+from comfy_execution.graph_utils import GraphBuilder
 
 
 class StyleModelApplyStrength:
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {"conditioning": ("CONDITIONING", ),
-                             "style_model": ("STYLE_MODEL", ),
-                             "clip_vision_output": ("CLIP_VISION_OUTPUT", ),
-                             "strength": ("FLOAT", {
-                                 "min": 0.0,
-                                 "max": 1.0,
-                                 "default": 1.0,
-                             }),
-                             }}
+        return {
+            "required": {
+                "conditioning": ("CONDITIONING",),
+                "style_model": ("STYLE_MODEL",),
+                "clip_vision_output": ("CLIP_VISION_OUTPUT",),
+                "strength": (
+                    "FLOAT",
+                    {
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.01,
+                        "default": 1.0,
+                    },
+                ),
+            }
+        }
 
     TITLE = "Apply Style Model (Strength)"
 
     RETURN_TYPES = ("CONDITIONING",)
-    FUNCTION = "apply_stylemodel"
+    FUNCTION = "expand"
 
     CATEGORY = "private/conditioning"
 
-    def apply_stylemodel(self, clip_vision_output, style_model, conditioning, strength):
-        cond = style_model.get_cond(clip_vision_output).flatten(start_dim=0, end_dim=1).unsqueeze(dim=0)
-        c = []
-        for t in conditioning:
-            # lols, can you just do this? Maybe it needs to be normalized...
-            # Also cat on dim=1? Is it being appended?
-            n = [torch.cat((t[0], strength * cond), dim=1), t[1].copy()]
-            c.append(n)
-        return (c, )
+    def expand(self, conditioning, style_model, clip_vision_output, strength):
+        graph = GraphBuilder()
+        apply_style_model_node = graph.node(
+            "StyleModelApply",
+            conditioning=conditioning,
+            style_model=style_model,
+            clip_vision_output=clip_vision_output,
+        )
+        conditioning_average_node = graph.node(
+            "ConditioningAverage",
+            conditioning_to=apply_style_model_node.out(0),
+            conditioning_from=conditioning,
+            conditioning_to_strength=strength,
+        )
+        return {
+            "result": (conditioning_average_node.out(0),),
+            "expand": graph.finalize(),
+        }
 
 
 class DumpToConsole:

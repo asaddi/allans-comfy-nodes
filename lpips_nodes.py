@@ -1,4 +1,5 @@
 import lpips
+import matplotlib as mpl
 import torch
 
 from comfy.model_management import get_torch_device, unet_offload_device
@@ -43,10 +44,18 @@ class LPIPSRun:
                 "lpips_model": ("LPIPS_MODEL",),
                 "reference": ("IMAGE",),
                 "image": ("IMAGE",),
+                "relative": ("BOOLEAN", {
+                    "label_on": "relative",
+                    "label_off": "absolute",
+                    "default": True,
+                }),
+                "grayscale": ("BOOLEAN", {
+                    "default": False,
+                }),
             },
         }
 
-    TITLE = "LPIPS Run"
+    TITLE = "LPIPS Image Compare"
 
     RETURN_TYPES = ("IMAGE",)
     OUTPUT_NODE = True
@@ -56,7 +65,7 @@ class LPIPSRun:
     CATEGORY = "private/lpips"
 
     def calculate(
-        self, lpips_model: lpips.LPIPS, reference: torch.Tensor, image: torch.Tensor
+        self, lpips_model: lpips.LPIPS, reference: torch.Tensor, image: torch.Tensor, relative: bool, grayscale: bool,
     ):
         torch_device = get_torch_device()
         offload_device = unet_offload_device()
@@ -88,11 +97,19 @@ class LPIPSRun:
         # Convert spatial distance map [B,C,H,W] (C=1) to [B,H,W,C] (C=1)
         spatial_map = spatial_map.permute(0, 2, 3, 1).to(torch.float32)
 
-        # Let's color it an obnoxious yellow for the hell of it
-        # (TODO make it configurable?)
-        # Apparently #ccff00 is a popular consensus for fluorescent yellow
-        color = torch.tensor([0xCC / 255.0, 1.0, 0.0])
-        spatial_map = color * spatial_map
+        if relative:
+            spatial_map = (spatial_map - spatial_map.min()) / (spatial_map.max() - spatial_map.min())
+
+        if grayscale:
+            spatial_map = spatial_map.repeat(1, 1, 1, 3)
+        else:
+            cmap = mpl.colormaps["inferno"]
+            # And now to [B,H,W] for matplotlib
+            spatial_map = spatial_map.reshape(spatial_map.shape[:3])
+            spatial_map = cmap(spatial_map)[:, :, :, :3]  # Get rid of alpha channel
+            # I think cmap converts it to an ndarray, convert it back
+            spatial_map = torch.tensor(spatial_map, dtype=torch.float32)
+
         # It should now be [B,H,W,C] (C=3)
 
         # TODO include image_loss in outputs?

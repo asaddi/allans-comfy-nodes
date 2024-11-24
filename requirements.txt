@@ -4,6 +4,7 @@ timm
 
 # Used by LPIPSRun
 lpips
+matplotlib
 
 # Used by DepthAnythingV2
 opencv-python

@@ -4,6 +4,45 @@ from random import Random
 import torch
 
 
+class FloatList:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "start": ("FLOAT", {
+                    "default": 0.0,
+                }),
+                "end": ("FLOAT", {
+                    "default": 1.0,
+                }),
+                "steps": ("INT", {
+                    "min": 1,
+                    "default": 10,
+                }),
+            }
+        }
+
+    TITLE = "Float List"
+
+    RETURN_TYPES = ("FLOAT",)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "run"
+
+    CATEGORY = "private/list"
+
+    def run(self, start, end, steps):
+        interval = end - start
+        steps = steps - 1
+        result = []
+        for i in range(steps):
+            result.append(round(start + interval * i / steps, 3))
+        # And the final step
+        result.append(end)
+
+        return (result,)
+
+
 class ImageList:
     @classmethod
     def INPUT_TYPES(cls):
@@ -154,6 +193,7 @@ class SeedList:
 
 
 NODE_CLASS_MAPPINGS = {
+    "FloatList": FloatList,
     "ImageList": ImageList,
     "LatentList": LatentList,
     "SeedList": SeedList,

@@ -1,3 +1,27 @@
 presets:
-  - name: test
-    text: Hello there.
+  - name: animagine/positive
+    text: masterpiece, best quality, very aesthetic, absurdres,
+  - name: animagine/negative
+    text: nsfw, lowres, (bad), text, error, fewer, extra, missing, worst quality, jpeg artifacts, low quality, watermark, unfinished, displeasing, oldest, early, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]
+  - name: animagine/notes
+    text: Euler a, steps <= 30, CFG 5-7
+
+  - name: illustrious/negative
+    text: worst quality, bad quality, bad hands, very displeasing, extra digit, fewer digits, jpeg artifacts, signature, username,reference, mutated, lineup, manga, comic, disembodied, futanari,yaoi, dickgirl, turnaround, 2koma, 4koma, monster, cropped, amputee,text, bad foreshortening, what, guro, logo, bad anatomy, bad perspective, bad proportions, artistic error, anatomical nonsense,amateur, out of frame, multiple views,
+  - name: illustrious/notes
+    text: Euler a, 28 steps, CFG 7.5
+
+  - name: noobai/positive
+    text: masterpiece, best quality, newest, absurdres, highres, safe,
+  - name: noobai/negative
+    text: nsfw, worst quality, old, early, low quality, lowres, signature, username, logo, bad hands, mutated hands, mammal, anthro, furry, ambiguous form, feral, semi-anthro
+  - name: noobai/notes
+    text: Euler only, 28-35 steps, CFG 4-5
+
+  - name: pony/positive
+    text: score_9, score_8_up, score_7_up,
+  - name: pony/negative
+    text: score_4, score_5, score_6, bad hands, bad feet
+
+  - name: juggernaut/notes
+    text: DPM 2++ SDE, 30-40 steps, CFG 3-6

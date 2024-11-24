@@ -1,33 +1,24 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
+from importlib import import_module
+
 from .nodes import NODE_CLASS_MAPPINGS
 
-try:
-    from . import wdv3_nodes
 
-    NODE_CLASS_MAPPINGS.update(wdv3_nodes.NODE_CLASS_MAPPINGS)
-except ImportError:
-    pass
+modules = [
+    "wdv3_nodes",
+    "lpips_nodes",
+    "dav2_nodes",
+    "experimental",
+]
 
-try:
-    from . import lpips_nodes
+for mod_name in modules:
+    try:
+        mod = import_module(f".{mod_name}", package=__name__)
+    except ImportError:
+        continue
 
-    NODE_CLASS_MAPPINGS.update(lpips_nodes.NODE_CLASS_MAPPINGS)
-except ImportError:
-    pass
+    NODE_CLASS_MAPPINGS.update(mod.NODE_CLASS_MAPPINGS)
 
-try:
-    from . import experimental
-
-    NODE_CLASS_MAPPINGS.update(experimental.NODE_CLASS_MAPPINGS)
-except ImportError:
-    pass
-
-try:
-    from . import dav2_nodes
-
-    NODE_CLASS_MAPPINGS.update(dav2_nodes.NODE_CLASS_MAPPINGS)
-except ImportError:
-    pass
 
 NODE_DISPLAY_NAME_MAPPINGS = {k: v.TITLE for k, v in NODE_CLASS_MAPPINGS.items()}
 

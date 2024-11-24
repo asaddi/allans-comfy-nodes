@@ -1,73 +1,9 @@
 from enum import Enum, auto
-from itertools import zip_longest
 import math
-from random import Random
-
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
-
-
-class SeedList:
-    SEED_MIN = 0
-    SEED_MAX = 2**53 - 1
-
-    _random = Random()
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "seed": ("INT", {
-                    "min": cls.SEED_MIN,
-                    "max": cls.SEED_MAX,
-                    "default": 0,
-                }),
-            },
-            "optional": {
-                "input_list": ("*",),
-            },
-        }
-
-    @classmethod
-    def VALIDATE_INPUTS(cls, input_types):
-        for i in input_types:
-            # Is seed an input?
-            received_type = i.get("seed")
-            if received_type is not None:
-                # Validate its type
-                if received_type != "INT":
-                    return f"seed, {received_type} != INT"
-        return True
-
-    TITLE = "Seed List"
-
-    INPUT_IS_LIST = True
-
-    RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("seed",)
-    OUTPUT_IS_LIST = (True,)
-
-    FUNCTION = "run"
-
-    CATEGORY = "private"
-
-    def run(self, seed, input_list=None):
-        # print(seed, None if input_list is None else len(input_list))
-        if input_list is None:
-            input_list = [None]  # Run at least once
-
-        result = []
-        for s, _ in zip_longest(seed, input_list):
-            if s is not None:
-                # Only re-seed if we actually have a seed i.e. not past
-                # the end of the list
-                self._random.seed(s)
-
-            result.append(self._random.randint(self.SEED_MIN, self.SEED_MAX))
-
-        return (result,)
 
 
 class PrivateLoraStack:
@@ -674,7 +610,6 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
-    "SeedList": SeedList,
     "PrivateLoraStack": PrivateLoraStack,
     "StyleModelApplyStrength": StyleModelApplyStrength,
     "PrivateSeed": PrivateSeed,

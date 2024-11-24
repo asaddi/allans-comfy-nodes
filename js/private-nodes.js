@@ -2,6 +2,29 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 app.registerExtension({
 	name: "private.nodes",
+
+	async beforeRegisterNodeDef(nodeType, nodeData, app) {
+		if (nodeType.comfyClass === "PresetText") {
+			nodeType.prototype.updatePreset = function (name) {
+				const presetWidget = this.widgets.find((w) => w.name === "preset");
+				const textWidget = this.widgets.find((w) => w.name === "text");
+
+				const presetName = name ?? presetWidget.value;
+
+				if (presetName === "None") {
+					textWidget.value = "";
+				}
+				else {
+					api.fetchApi(`/preset_text?name=${presetName}`).then((resp) => {
+						resp.json().then((data) => {
+							textWidget.value = data;
+						});
+					});
+				}
+			}
+		}
+	},
+
 	async nodeCreated(node) {
 		if (node?.comfyClass === "ResolutionChooser") {
 			const pixelsWidget = node.widgets.find(
@@ -78,6 +101,20 @@ app.registerExtension({
 			);
 			histWidget.label = "♻️previous seed";
 			histWidget.disabled = true;
+		}
+
+		else if (node?.comfyClass === "PresetText") {
+			const presetWidget = node.widgets.find((w) => w.name === "preset");
+
+			const original_callback = presetWidget.callback;
+			presetWidget.callback = function (...args) {
+				const name = args?.[0];
+				node.updatePreset(name);
+				return original_callback?.apply(this, args);
+			};
+
+			const textWidget = node.widgets.find((w) => w.name === "text");
+			textWidget.inputEl.readOnly = true;
 		}
 	},
 

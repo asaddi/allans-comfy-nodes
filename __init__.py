@@ -5,6 +5,7 @@ from .nodes import NODE_CLASS_MAPPINGS
 
 
 modules = [
+    "presettext",
     "wdv3_nodes",
     "lpips_nodes",
     "dav2_nodes",

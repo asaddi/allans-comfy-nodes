@@ -146,6 +146,10 @@ class SeedList:
                         "default": 0,
                     },
                 ),
+                "amount": ("INT", {
+                    "min": 1,
+                    "default": 1,
+                }),
             },
             "optional": {
                 "input_list": ("*",),
@@ -161,6 +165,12 @@ class SeedList:
                 # Validate its type
                 if received_type != "INT":
                     return f"seed, {received_type} != INT"
+
+            received_type = i.get("amount")
+            if received_type is not None:
+                if received_type != "INT":
+                    return f"amount, {received_type} != INT"
+
         return True
 
     TITLE = "Seed List"
@@ -168,17 +178,17 @@ class SeedList:
     INPUT_IS_LIST = True
 
     RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("seed",)
+    RETURN_NAMES = ("seeds",)
     OUTPUT_IS_LIST = (True,)
 
     FUNCTION = "run"
 
     CATEGORY = "private/list"
 
-    def run(self, seed, input_list=None):
+    def run(self, seed, amount, input_list=None):
         # print(seed, None if input_list is None else len(input_list))
         if input_list is None:
-            input_list = [None]  # Run at least once
+            input_list = [None] * amount[0]
 
         result = []
         for s, _ in zip_longest(seed, input_list):

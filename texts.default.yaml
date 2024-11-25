@@ -28,3 +28,10 @@ presets:
 
   - name: juggernaut/notes
     text: DPM 2++ SDE, 30-40 steps, CFG 3-6
+
+  - name: sd3.5/notes
+    text: |
+      dpmpp_2m/sgm_uniform, 40 steps, CFG 4.5
+
+      large: zero-out .1
+      medium: zero-out .2

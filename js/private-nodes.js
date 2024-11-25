@@ -1,5 +1,5 @@
-import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { app } from "../../scripts/app.js";
 app.registerExtension({
 	name: "private.nodes",
 
@@ -13,40 +13,27 @@ app.registerExtension({
 
 				if (presetName === "None") {
 					textWidget.value = "";
-				}
-				else {
+				} else {
 					api.fetchApi(`/preset_text?name=${presetName}`).then((resp) => {
 						resp.json().then((data) => {
 							textWidget.value = data;
 						});
 					});
 				}
-			}
+			};
 		}
 	},
 
 	async nodeCreated(node) {
 		if (node?.comfyClass === "ResolutionChooser") {
-			const pixelsWidget = node.widgets.find(
-				(w) => w.name === "megapixels"
-			);
+			const pixelsWidget = node.widgets.find((w) => w.name === "megapixels");
 			pixelsWidget.label = "mebipixels";
-		}
-
-		else if (node?.comfyClass === "LPIPSRun") {
-			node.addWidget(
-				"number",
-				"image_loss",
-				0,
-				function() {},
-				{
-					// TODO how to make read only??
-					serialize: false,
-				}
-			);
-		}
-
-		else if (node?.comfyClass === "PrivateSeed") {
+		} else if (node?.comfyClass === "LPIPSRun") {
+			node.addWidget("number", "image_loss", 0, () => {}, {
+				// TODO how to make read only??
+				serialize: false,
+			});
+		} else if (node?.comfyClass === "PrivateSeed") {
 			node.properties.randomizeSeed = true;
 
 			// rename seed widget
@@ -55,7 +42,7 @@ app.registerExtension({
 
 			const newSeed = () => {
 				seedWidget.value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-			}
+			};
 			newSeed();
 
 			// add extra buttons
@@ -63,13 +50,13 @@ app.registerExtension({
 				"button",
 				"randomize",
 				"randomize",
-				function () {
+				() => {
 					node.properties.randomizeSeed = true;
 					newSeed();
 				},
 				{
 					serialize: false,
-				}
+				},
 			);
 			randomWidget.label = "🎲always randomize";
 
@@ -77,13 +64,13 @@ app.registerExtension({
 				"button",
 				"fixed",
 				"fixed",
-				function () {
+				() => {
 					node.properties.randomizeSeed = false;
 					newSeed();
 				},
 				{
 					serialize: false,
-				}
+				},
 			);
 			fixedWidget.label = "🎲new fixed seed";
 
@@ -97,13 +84,11 @@ app.registerExtension({
 				},
 				{
 					serialize: false,
-				}
+				},
 			);
 			histWidget.label = "♻️previous seed";
 			histWidget.disabled = true;
-		}
-
-		else if (node?.comfyClass === "PresetText") {
+		} else if (node?.comfyClass === "PresetText") {
 			const presetWidget = node.widgets.find((w) => w.name === "preset");
 
 			const original_callback = presetWidget.callback;
@@ -128,23 +113,19 @@ app.registerExtension({
 				const image_losses = event.detail.output.image_loss;
 				lossWidget.value = image_losses[image_losses.length - 1];
 				app.graph.setDirtyCanvas(true, false);
-			}
-
-			else if (node?.comfyClass === "PrivateSeed") {
-				const histWidget = node.widgets.find(
-					(w) => w.name === "previous"
-				);
+			} else if (node?.comfyClass === "PrivateSeed") {
+				const histWidget = node.widgets.find((w) => w.name === "previous");
 
 				const values = event.detail.output.seed_value;
 				histWidget.value = values[values.length - 1];
 				histWidget.label = `♻️${histWidget.value}`;
 				histWidget.disabled = false;
 
-				const seedWidget = node.widgets.find(
-					(w) => w.name === "seed_value"
-				);
+				const seedWidget = node.widgets.find((w) => w.name === "seed_value");
 				if (node.properties.randomizeSeed) {
-					seedWidget.value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+					seedWidget.value = Math.floor(
+						Math.random() * Number.MAX_SAFE_INTEGER,
+					);
 				}
 			}
 		});

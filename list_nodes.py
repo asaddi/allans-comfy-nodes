@@ -61,8 +61,6 @@ class ImageList:
 
     TITLE = "Repeat Image List"
 
-    INPUT_IS_LIST = True
-
     RETURN_TYPES = ("IMAGE",)
     OUTPUT_IS_LIST = (True,)
 
@@ -70,17 +68,11 @@ class ImageList:
 
     CATEGORY = "private/list"
 
-    def repeat(self, image: list[torch.Tensor], amount: list[int]):
+    def repeat(self, image: torch.Tensor, amount: int):
         result: list[torch.Tensor] = []
-        for img, amt in zip_longest(image, amount):
-            if img is None:
-                img = image[-1]
-            if amt is None:
-                amt = amount[-1]
-
-            for _ in range(amt):
-                # Ensure each tensor is a copy
-                result.append(torch.clone(img))
+        for _ in range(amount):
+            # Ensure each tensor is a copy
+            result.append(torch.clone(image))
 
         return (result,)
 
@@ -103,8 +95,6 @@ class LatentList:
 
     TITLE = "Repeat Latent List"
 
-    INPUT_IS_LIST = True
-
     RETURN_TYPES = ("LATENT",)
     OUTPUT_IS_LIST = (True,)
 
@@ -112,18 +102,12 @@ class LatentList:
 
     CATEGORY = "private/list"
 
-    def repeat(self, samples: list[torch.Tensor], amount: list[int]):
-        result: list[torch.Tensor] = []
-        for latents, amt in zip_longest(samples, amount):
-            if latents is None:
-                latents = samples[-1]
-            if amt is None:
-                amt = amount[-1]
-
-            lat = latents["samples"]
-            for _ in range(amt):
-                # Ensure each tensor is a copy
-                result.append({"samples": torch.clone(lat)})
+    def repeat(self, samples: dict, amount: int):
+        result: list[dict] = []
+        lat = samples["samples"]
+        for _ in range(amount):
+            # Ensure each tensor is a copy
+            result.append({"samples": torch.clone(lat)})
 
         return (result,)
 
@@ -156,6 +140,8 @@ class SeedList:
             },
         }
 
+    # TODO At this point, it's probably easier to create a str subclass
+    # for the "*" type.
     @classmethod
     def VALIDATE_INPUTS(cls, input_types):
         for i in input_types:
@@ -175,6 +161,9 @@ class SeedList:
 
     TITLE = "Seed List"
 
+    # Note: This is True so we can distinguish the start of the list and
+    # only set _random's seed when we have actual values, not repeated
+    # values.
     INPUT_IS_LIST = True
 
     RETURN_TYPES = ("INT",)

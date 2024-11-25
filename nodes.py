@@ -34,7 +34,7 @@ class PrivateLoraStack:
 
         return d
 
-    TITLE = "Lora Stack (private)"
+    TITLE = "LoRA Stack"
 
     RETURN_TYPES = ("MODEL", "CLIP")
 
@@ -151,7 +151,7 @@ class PrivateSeed:
     def IS_CHANGED(cls, seed_value, unique_id, extra_pnginfo):
         return seed_value
 
-    TITLE = "Seed (private)"
+    TITLE = "Seed"
 
     RETURN_TYPES = ("INT",)
     RETURN_NAMES = ("seed",)

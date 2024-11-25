@@ -40,7 +40,7 @@ class PrivateAnySwitch:
         # (As opposed to using the str subclass, as done below.)
         return True
 
-    TITLE = "Any Switch 2 (private)"
+    TITLE = "Any Switch 2"
 
     RETURN_TYPES = (AnyType("*"),)
 
@@ -59,7 +59,7 @@ class PrivateAnySwitch:
 class PrivateAnySwitch4(PrivateAnySwitch):
     NUM_INPUTS = 4
 
-    TITLE = "Any Switch 4 (private)"
+    TITLE = "Any Switch 4"
 
 
 class DumpToConsole:

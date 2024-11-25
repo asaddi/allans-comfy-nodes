@@ -19,7 +19,7 @@ presets:
   - name: noobai/negative
     text: nsfw, worst quality, old, early, low quality, lowres, signature, username, logo, bad hands, mutated hands, mammal, anthro, furry, ambiguous form, feral, semi-anthro
   - name: noobai/notes
-    text: Euler only, 28-35 steps, CFG 4-5
+    text: Euler only, 28-35 steps, CFG 4-5, needs ModelSamplingDiscrete
 
   - name: pony/positive
     text: score_9, score_8_up, score_7_up,

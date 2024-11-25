@@ -1,4 +1,7 @@
 presets:
+  - name: test
+    text: beautiful scenery nature glass bottle landscape, purple galaxy bottle,
+
   - name: animagine/positive
     text: masterpiece, best quality, very aesthetic, absurdres,
   - name: animagine/negative

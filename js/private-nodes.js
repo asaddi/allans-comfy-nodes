@@ -89,17 +89,23 @@ app.registerExtension({
 			histWidget.label = "♻️previous seed";
 			histWidget.disabled = true;
 		} else if (node?.comfyClass === "PresetText") {
-			const presetWidget = node.widgets.find((w) => w.name === "preset");
-
-			const original_callback = presetWidget.callback;
-			presetWidget.callback = function (...args) {
-				const name = args?.[0];
-				node.updatePreset(name);
-				return original_callback?.apply(this, args);
-			};
-
-			const textWidget = node.widgets.find((w) => w.name === "text");
-			textWidget.inputEl.readOnly = true;
+			// The moment we add a 3rd widget, the text box gets compressed.
+			// Preserve the original size.
+			const sz = [...node.size];
+			const loadWidget = node.addWidget(
+				"button",
+				"load",
+				"load",
+				() => {
+					node.updatePreset();
+				},
+				{
+					serialize: false,
+				},
+			);
+			loadWidget.label = "📥load preset";
+			node.setSize(sz);
+			node.setDirtyCanvas(true, true);
 		}
 	},
 

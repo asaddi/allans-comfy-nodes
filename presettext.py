@@ -59,13 +59,13 @@ class PresetTextNode:
         LOADER.refresh()
         return {
             "required": {
-                "preset": (["None"] + LOADER.CHOICES,),
                 "text": (
                     "STRING",
                     {
                         "multiline": True,
                     },
                 ),
+                "preset": (["None"] + LOADER.CHOICES,),
             }
         }
 
@@ -79,7 +79,6 @@ class PresetTextNode:
     TITLE = "Preset Text"
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("preset_text",)
 
     FUNCTION = "execute"
 

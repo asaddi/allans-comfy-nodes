@@ -9,6 +9,75 @@ def get_node_info(extra_pnginfo, node_id) -> dict:
     raise RuntimeError(f"Node missing from workflow: {node_id}")
 
 
+class FloatLatch:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "value": ("FLOAT",),
+                "replace": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                    },
+                ),
+            },
+            "optional": {
+                "float_input": (
+                    "INT",
+                    {
+                        "forceInput": True,
+                        "lazy": True,
+                    },
+                ),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    TITLE = "Float Latch"
+
+    RETURN_TYPES = ("FLOAT",)
+    OUTPUT_NODE = True
+
+    FUNCTION = "execute"
+
+    CATEGORY = "private/latch"
+
+    def check_lazy_status(
+        self,
+        value: int,
+        replace: bool,
+        unique_id,
+        extra_pnginfo,
+        float_input: int | None = None,
+    ):
+        # If float_input is connected, require evaluation based on replace
+        if replace:
+            my_node_info = get_node_info(extra_pnginfo, unique_id)
+            if any(
+                input["name"] == "float_input" and input["link"] is not None
+                for input in my_node_info.get("inputs", [])
+            ):
+                return ["float_input"]
+        return []
+
+    def execute(
+        self,
+        value: int,
+        replace: bool,
+        unique_id,
+        extra_pnginfo,
+        float_input: int | None = None,
+    ):
+        if float_input is not None and replace:
+            value = float_input
+
+        return {"ui": {"value": (value,)}, "result": (value,)}
+
+
 class IntegerLatch:
     @classmethod
     def INPUT_TYPES(cls):
@@ -79,5 +148,6 @@ class IntegerLatch:
 
 
 NODE_CLASS_MAPPINGS = {
+    "FloatLatch": FloatLatch,
     "IntegerLatch": IntegerLatch,
 }

@@ -7,10 +7,13 @@ from .nodes import NODE_CLASS_MAPPINGS
 modules = [
     "presettext",
     "list_nodes",
+    "latch_nodes",
+
+    "experimental",
+
     "wdv3_nodes",
     "lpips_nodes",
     "dav2_nodes",
-    "experimental",
 ]
 
 for mod_name in modules:

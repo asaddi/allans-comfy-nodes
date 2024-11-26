@@ -153,6 +153,10 @@ app.registerExtension({
 				const [width, height] = values[values.length - 1];
 				widthWidget.value = width;
 				heightWidget.value = height;
+			} else if (node?.comfyClass === "IntegerLatch") {
+				const valueWidget = node.widgets.find((w) => w.name === "value");
+				const values = event.detail.output.value;
+				valueWidget.value = values[values.length - 1];
 			}
 		});
 	},

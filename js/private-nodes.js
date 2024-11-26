@@ -29,10 +29,11 @@ app.registerExtension({
 			const pixelsWidget = node.widgets.find((w) => w.name === "megapixels");
 			pixelsWidget.label = "mebipixels";
 		} else if (node?.comfyClass === "LPIPSRun") {
-			node.addWidget("number", "image_loss", 0, () => {}, {
-				// TODO how to make read only??
+			const lossWidget = node.addWidget("number", "image_loss", 0, () => {}, {
+				precision: 6,
 				serialize: false,
 			});
+			lossWidget.disabled = true;
 		} else if (node?.comfyClass === "PrivateSeed") {
 			node.properties.randomizeSeed = true;
 

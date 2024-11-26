@@ -8,6 +8,7 @@ modules = [
     "presettext",
     "list_nodes",
     "latch_nodes",
+    "switch_nodes",
 
     "experimental",
 

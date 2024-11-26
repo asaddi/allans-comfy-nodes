@@ -106,6 +106,17 @@ app.registerExtension({
 			loadWidget.label = "📥load preset";
 			node.setSize(sz);
 			node.setDirtyCanvas(true, true);
+		} else if (node?.comfyClass === "ImageDimensions") {
+			const widthWidget = node.addWidget("number", "width", 0, () => {}, {
+				precision: 0,
+				serialize: false,
+			});
+			const heightWidget = node.addWidget("number", "height", 0, () => {}, {
+				precision: 0,
+				serialize: false,
+			});
+			widthWidget.disabled = true;
+			heightWidget.disabled = true;
 		}
 	},
 
@@ -133,6 +144,14 @@ app.registerExtension({
 						Math.random() * Number.MAX_SAFE_INTEGER,
 					);
 				}
+			} else if (node?.comfyClass === "ImageDimensions") {
+				const widthWidget = node.widgets.find((w) => w.name === "width");
+				const heightWidget = node.widgets.find((w) => w.name === "height");
+
+				const values = event.detail.output.dims;
+				const [width, height] = values[values.length - 1];
+				widthWidget.value = width;
+				heightWidget.value = height;
 			}
 		});
 	},

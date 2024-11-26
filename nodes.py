@@ -1,9 +1,36 @@
 from enum import Enum, auto
 import math
 
+import torch
+
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
+
+
+class ImageDimensions:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+            },
+        }
+
+    TITLE = "Get Image Dimensions"
+
+    OUTPUT_NODE = True
+
+    RETURN_TYPES = ("INT", "INT")
+    RETURN_NAMES = ("width", "height")
+
+    FUNCTION = "run"
+
+    CATEGORY = "private/image"
+
+    def run(self, image: torch.Tensor):
+        height, width = image.shape[1:3]
+        return {"ui": {"dims": ([width, height],)}, "result": (width, height)}
 
 
 class PrivateLoraStack:
@@ -610,6 +637,7 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ImageDimensions": ImageDimensions,
     "PrivateLoraStack": PrivateLoraStack,
     "StyleModelApplyStrength": StyleModelApplyStrength,
     "PrivateSeed": PrivateSeed,

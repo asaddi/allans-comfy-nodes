@@ -21,8 +21,7 @@ class PrivateAnySwitch:
     @classmethod
     def INPUT_TYPES(cls):
         d = {
-            "optional": {
-            },
+            "optional": {},
             "hidden": {
                 "unique_id": "UNIQUE_ID",
             },

@@ -9,9 +9,7 @@ modules = [
     "list_nodes",
     "latch_nodes",
     "switch_nodes",
-
     "experimental",
-
     "wdv3_nodes",
     "lpips_nodes",
     "dav2_nodes",

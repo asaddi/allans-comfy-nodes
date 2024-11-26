@@ -9,16 +9,25 @@ class FloatList:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "start": ("FLOAT", {
-                    "default": 0.0,
-                }),
-                "end": ("FLOAT", {
-                    "default": 1.0,
-                }),
-                "steps": ("INT", {
-                    "min": 1,
-                    "default": 10,
-                }),
+                "start": (
+                    "FLOAT",
+                    {
+                        "default": 0.0,
+                    },
+                ),
+                "end": (
+                    "FLOAT",
+                    {
+                        "default": 1.0,
+                    },
+                ),
+                "steps": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 10,
+                    },
+                ),
             }
         }
 
@@ -130,10 +139,13 @@ class SeedList:
                         "default": 0,
                     },
                 ),
-                "amount": ("INT", {
-                    "min": 1,
-                    "default": 1,
-                }),
+                "amount": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 1,
+                    },
+                ),
             },
             "optional": {
                 "input_list": ("*",),

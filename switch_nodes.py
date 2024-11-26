@@ -15,9 +15,12 @@ class ImageMaskSwitch:
         }
         for index in range(cls.NUM_INPUTS):
             d["optional"][f"image{index}"] = ("IMAGE",)
-            d["optional"][f"mask{index}"] = ("MASK", {
-                "lazy": True,
-            })
+            d["optional"][f"mask{index}"] = (
+                "MASK",
+                {
+                    "lazy": True,
+                },
+            )
         return d
 
     TITLE = "Image/Mask Switch 2"

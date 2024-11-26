@@ -75,9 +75,12 @@ class DepthAnythingV2Node:
             "required": {
                 "dav2_model": ("DAV2MODEL",),
                 "image": ("IMAGE",),
-                "grayscale": ("BOOLEAN", {
-                    "default": True,
-                }),
+                "grayscale": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                    },
+                ),
             },
         }
 

@@ -48,14 +48,20 @@ class LPIPSRun:
                 "lpips_model": ("LPIPS_MODEL",),
                 "reference": ("IMAGE",),
                 "image": ("IMAGE",),
-                "relative": ("BOOLEAN", {
-                    "label_on": "relative",
-                    "label_off": "absolute",
-                    "default": True,
-                }),
-                "grayscale": ("BOOLEAN", {
-                    "default": False,
-                }),
+                "relative": (
+                    "BOOLEAN",
+                    {
+                        "label_on": "relative",
+                        "label_off": "absolute",
+                        "default": True,
+                    },
+                ),
+                "grayscale": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                    },
+                ),
             },
         }
 
@@ -69,7 +75,12 @@ class LPIPSRun:
     CATEGORY = "private/lpips"
 
     def calculate(
-        self, lpips_model: lpips.LPIPS, reference: torch.Tensor, image: torch.Tensor, relative: bool, grayscale: bool,
+        self,
+        lpips_model: lpips.LPIPS,
+        reference: torch.Tensor,
+        image: torch.Tensor,
+        relative: bool,
+        grayscale: bool,
     ):
         torch_device = get_torch_device()
         offload_device = unet_offload_device()
@@ -102,7 +113,9 @@ class LPIPSRun:
         spatial_map = spatial_map.permute(0, 2, 3, 1).to(torch.float32)
 
         if relative:
-            spatial_map = (spatial_map - spatial_map.min()) / (spatial_map.max() - spatial_map.min())
+            spatial_map = (spatial_map - spatial_map.min()) / (
+                spatial_map.max() - spatial_map.min()
+            )
 
         if grayscale:
             spatial_map = spatial_map.repeat(1, 1, 1, 3)

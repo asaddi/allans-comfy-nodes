@@ -29,8 +29,12 @@ class LPIPSModel:
 
 
 def prepare_image(image: torch.Tensor) -> torch.Tensor:
+    # Note: With the "relative" switch on, tiny errors are being amplified.
+    # In reality, images would be closer in 24-bit RGB space.
+    # Convert image to 8-bit per channel first, then back.
+    image = (255.0 * image).clamp(0, 255).to(torch.uint8)
     # Rescale image to [-1,1] as expected by LPIPS
-    image = 2.0 * image - 1.0
+    image = 2.0 * image.to(torch.float32) / 255.0 - 1.0
     # [B,H,W,C] -> [B,C,H,W]
     image = image.permute(0, 3, 1, 2)
     return image
@@ -90,9 +94,9 @@ class LPIPSRun:
         lpips_model.to(offload_device)
 
         spatial_map = spatial_map.cpu()
-        # NB This is across the entire batch, so it will be wrong for batches
+        # FIXME This is across the entire batch, so it will be wrong for batches
         image_loss = float(spatial_map.mean())
-        print(f"image_loss = {image_loss:.3f}")
+        print(f"image_loss = {image_loss:.6f}")
 
         # Convert spatial distance map [B,C,H,W] (C=1) to [B,H,W,C] (C=1)
         spatial_map = spatial_map.permute(0, 2, 3, 1).to(torch.float32)

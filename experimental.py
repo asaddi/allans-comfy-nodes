@@ -3,6 +3,43 @@ from pprint import pprint
 import torch
 
 from comfy_execution.graph import ExecutionBlocker
+from comfy_execution.graph_utils import GraphBuilder
+
+
+class MaskBlur:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "mask": ("MASK",),
+                "blur_radius": ("INT", {"default": 1, "min": 1, "max": 31, "step": 1}),
+                "sigma": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1},
+                ),
+            }
+        }
+
+    TITLE = "Mask Blur"
+
+    RETURN_TYPES = ("MASK",)
+
+    FUNCTION = "mask_blur"
+
+    CATEGORY = "private/mask"
+
+    def mask_blur(self, mask: torch.Tensor, blur_radius: int, sigma: float):
+        # We're going to be lazy and just do it all via graph expansion
+        graph = GraphBuilder()
+        m2i = graph.node("MaskToImage", mask=mask)
+        blur = graph.node(
+            "ImageBlur", image=m2i.out(0), blur_radius=blur_radius, sigma=sigma
+        )
+        i2m = graph.node("ImageToMask", image=blur.out(0), channel="red")
+        return {
+            "result": (i2m.out(0),),
+            "expand": graph.finalize(),
+        }
 
 
 class AnyType(str):
@@ -136,6 +173,7 @@ class CLIPDistance:
 
 
 NODE_CLASS_MAPPINGS = {
+    "MaskBlur": MaskBlur,
     "AnySwitch2": PrivateAnySwitch,
     "AnySwitch4": PrivateAnySwitch4,
     "DumpToConsole": DumpToConsole,

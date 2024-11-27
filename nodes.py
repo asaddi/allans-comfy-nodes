@@ -203,6 +203,75 @@ class PrivateSeed:
         return {"ui": {"seed_value": (seed_value,)}, "result": (seed_value,)}
 
 
+class WorkflowUtils:
+    def __init__(self, extra_pnginfo):
+        self.node_cache: dict[int, dict] = {
+            node_info["id"]: node_info
+            for node_info in extra_pnginfo["workflow"]["nodes"]
+        }
+        self.link_cache: dict[int, tuple] = {
+            link_info[0]: link_info for link_info in extra_pnginfo["workflow"]["links"]
+        }
+
+    def get_node_info(self, node_id: int | str) -> dict:
+        node_id = int(node_id)
+        return self.node_cache[node_id]
+
+    def is_output_connected(self, node_id: int | str, type=None, name=None) -> bool:
+        assert type is not None or name is not None
+        node_info = self.get_node_info(node_id)
+        outputs = node_info.get("outputs", [])
+        return any(
+            [
+                (
+                    (type is not None and output["type"] == type)
+                    or (name is not None and output["name"] == name)
+                )
+                and output["links"]
+                for output in outputs
+            ]
+        )
+
+    def is_input_connected(self, node_id: int | str, type=None, name=None) -> bool:
+        assert type is not None or name is not None
+        node_info = self.get_node_info(node_id)
+        inputs = node_info.get("inputs", [])
+        return any(
+            [
+                (
+                    (type is not None and input["type"] == type)
+                    or (name is not None and input["name"] == name)
+                )
+                and input["link"] is not None
+                for input in inputs
+            ]
+        )
+
+    def get_downstream_nodes(self, node_id: int | str, bus_type: str) -> list[int]:
+        downstream: list[int] = []
+
+        to_check = [int(node_id)]
+        while to_check:
+            check_id = to_check.pop(0)
+
+            # Yes, consider the starting node downstream from itself as well
+            downstream.append(check_id)
+
+            node_info = self.get_node_info(check_id)
+
+            outputs = node_info.get("outputs", [])
+            bus_out = [out["links"] for out in outputs if out["type"] == bus_type][0]
+            if bus_out:
+                # NB There can be multiple outputs
+                out_ids: list[int] = [
+                    self.link_cache[link_id][3]  # dest node id
+                    for link_id in bus_out
+                ]
+                to_check.extend(out_ids)
+
+        return downstream
+
+
 class SimpleBus:
     @classmethod
     def INPUT_TYPES(cls):
@@ -249,77 +318,27 @@ class SimpleBus:
 
     CATEGORY = "private"
 
-    @staticmethod
-    def get_node_info(extra_pnginfo, node_id) -> dict:
-        node_id = int(node_id)
-        for node_info in extra_pnginfo["workflow"]["nodes"]:
-            if node_info["id"] == node_id:
-                return node_info
-        # WTF is this?
-        raise RuntimeError(f"Node missing from workflow: {node_id}")
-
-    @staticmethod
-    def is_output_connected(node_info, out_type) -> bool:
-        outputs = node_info.get("outputs", [])
-        return any(
-            [
-                True
-                for output in outputs
-                if output["type"] == out_type
-                and output["links"]  # can be empty list as well
-            ]
-        )
-
-    @staticmethod
-    def is_input_connected(node_info, in_type) -> bool:
-        inputs = node_info.get("inputs", [])
-        return any(
-            [
-                True
-                for input in inputs
-                if input["type"] == in_type and input["link"] is not None
-            ]
-        )
-
-    @staticmethod
-    def get_downstream_nodes(extra_pnginfo, node_id, info_cache):
-        downstream = []
-
-        to_check = [int(node_id)]
-        while to_check:
-            check_id = to_check.pop(0)
-
-            # Yes, consider the starting node downstream from itself as well
-            downstream.append(check_id)
-
-            if (node_info := info_cache.get(check_id)) is None:
-                node_info = info_cache[check_id] = SimpleBus.get_node_info(
-                    extra_pnginfo, check_id
-                )
-
-            outputs = node_info.get("outputs", [])
-            bus_out = [out["links"] for out in outputs if out["type"] == "SIMPLEBUS"][0]
-            if bus_out:
-                # NB There can be multiple outputs
-                out_ids = [
-                    link[3]
-                    for link in extra_pnginfo["workflow"]["links"]
-                    if link[0] in bus_out
-                ]
-                to_check.extend(out_ids)
-
-        return downstream
-
     def _check_downstream_for_type(
-        self, downstream, info_cache, type_name, input_value
+        self, downstream, wf_utils: WorkflowUtils, type_name, input_value
     ) -> bool:
         if (
-            SimpleBus.is_input_connected(info_cache[downstream[0]], type_name)
+            wf_utils.is_input_connected(downstream[0], type=type_name)
             and input_value is None
         ):
             for check_id in downstream:
-                check_info = info_cache[check_id]
-                if SimpleBus.is_output_connected(check_info, type_name):
+                if wf_utils.is_output_connected(check_id, type=type_name):
+                    return True
+        return False
+
+    def _check_downstream_for_name(
+        self, downstream, wf_utils: WorkflowUtils, name, input_value
+    ) -> bool:
+        if (
+            wf_utils.is_input_connected(downstream[0], name=name)
+            and input_value is None
+        ):
+            for check_id in downstream:
+                if wf_utils.is_output_connected(check_id, name=name):
                     return True
         return False
 
@@ -336,10 +355,8 @@ class SimpleBus:
         unique_id = int(unique_id)
 
         # TODO do all this lazily
-        info_cache = {}
-        downstream = SimpleBus.get_downstream_nodes(
-            extra_pnginfo, unique_id, info_cache
-        )
+        wf_utils = WorkflowUtils(extra_pnginfo)
+        downstream = wf_utils.get_downstream_nodes(unique_id, "SIMPLEBUS")
 
         # Note: bus is not lazy (but it is optional)
 
@@ -348,19 +365,19 @@ class SimpleBus:
 
         needed = []
 
-        if self._check_downstream_for_type(downstream, info_cache, "MODEL", model):
+        if self._check_downstream_for_type(downstream, wf_utils, "MODEL", model):
             needed.append("model")
 
-        if self._check_downstream_for_type(downstream, info_cache, "VAE", vae):
+        if self._check_downstream_for_type(downstream, wf_utils, "VAE", vae):
             needed.append("vae")
 
-        if self._check_downstream_for_type(downstream, info_cache, "LATENT", latent):
+        if self._check_downstream_for_type(downstream, wf_utils, "LATENT", latent):
             needed.append("latent")
 
-        if self._check_downstream_for_type(downstream, info_cache, "GUIDER", guider):
+        if self._check_downstream_for_type(downstream, wf_utils, "GUIDER", guider):
             needed.append("guider")
 
-        # print(f"SimpleBus #{unique_id} needed: {needed}")
+        print(f"SimpleBus #{unique_id} needed: {needed}")
         return needed
 
     def execute(
@@ -388,12 +405,152 @@ class SimpleBus:
         if guider is not None:
             bus["guider"] = guider
 
+        # None of these are tensors (and therefore are boolean ambiguous),
+        # but we'll be consistent anyway (with ControlBus)
+        model = bus.get("model")
+        vae = bus.get("vae")
+        latent = bus.get("latent")
+        guider = bus.get("guider")
+
         return (
             bus,
-            bus.get("model") or ExecutionBlocker("MODEL not present on bus"),
-            bus.get("vae") or ExecutionBlocker("VAE not present on bus"),
-            bus.get("latent") or ExecutionBlocker("LATENT not present on bus"),
-            bus.get("guider") or ExecutionBlocker("GUIDER not present on bus"),
+            model
+            if model is not None
+            else ExecutionBlocker("MODEL not present on bus"),
+            vae if vae is not None else ExecutionBlocker("VAE not present on bus"),
+            latent
+            if latent is not None
+            else ExecutionBlocker("LATENT not present on bus"),
+            guider
+            if guider is not None
+            else ExecutionBlocker("GUIDER not present on bus"),
+        )
+
+
+class ControlBus(SimpleBus):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "optional": {
+                "cbus": ("CONTROLBUS",),
+                "positive": (
+                    "CONDITIONING",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "negative": (
+                    "CONDITIONING",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "image": (
+                    "IMAGE",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "mask": (
+                    "MASK",
+                    {
+                        "lazy": True,
+                    },
+                ),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    TITLE = "Control Bus"
+
+    RETURN_TYPES = ("CONTROLBUS", "CONDITIONING", "CONDITIONING", "IMAGE", "MASK")
+    RETURN_NAMES = ("CBUS", "positive", "negative", "IMAGE", "MASK")
+
+    def check_lazy_status(
+        self,
+        unique_id,
+        extra_pnginfo,
+        cbus=None,
+        positive=None,
+        negative=None,
+        image=None,
+        mask=None,
+    ):
+        unique_id = int(unique_id)
+
+        wf_utils = WorkflowUtils(extra_pnginfo)
+        downstream = wf_utils.get_downstream_nodes(unique_id, "CONTROLBUS")
+
+        # Note: bus is not lazy (but it is optional)
+
+        # The rest of the inputs actually depend on what's being used
+        # downstream (used = output is connected to something)
+
+        needed = []
+
+        if self._check_downstream_for_name(downstream, wf_utils, "positive", positive):
+            needed.append("positive")
+
+        if self._check_downstream_for_name(downstream, wf_utils, "negative", negative):
+            needed.append("negative")
+
+        if self._check_downstream_for_type(downstream, wf_utils, "IMAGE", image):
+            needed.append("image")
+
+        if self._check_downstream_for_type(downstream, wf_utils, "MASK", mask):
+            needed.append("mask")
+
+        print(f"ControlBus #{unique_id} needed: {needed}")
+        return needed
+
+    def execute(
+        self,
+        unique_id,
+        extra_pnginfo,
+        cbus=None,
+        positive=None,
+        negative=None,
+        image=None,
+        mask=None,
+        **kwargs,
+    ):
+        if cbus is None:
+            cbus = {}
+
+        if positive is not None:
+            cbus["positive"] = positive
+
+        if negative is not None:
+            cbus["negative"] = negative
+
+        if image is not None:
+            cbus["image"] = image
+
+        if mask is not None:
+            cbus["mask"] = mask
+
+        # image & mask are pure tensors and are therefore
+        # ambiguous. Just check all of them against None.
+        positive = cbus.get("positive")
+        negative = cbus.get("negative")
+        image = cbus.get("image")
+        mask = cbus.get("mask")
+
+        return (
+            cbus,
+            positive
+            if positive is not None
+            else ExecutionBlocker("positive not present on bus"),
+            negative
+            if negative is not None
+            else ExecutionBlocker("negative not present on bus"),
+            image
+            if image is not None
+            else ExecutionBlocker("IMAGE not present on bus"),
+            mask if mask is not None else ExecutionBlocker("MASK not present on bus"),
         )
 
 
@@ -642,6 +799,7 @@ NODE_CLASS_MAPPINGS = {
     "StyleModelApplyStrength": StyleModelApplyStrength,
     "PrivateSeed": PrivateSeed,
     "SimpleBus": SimpleBus,
+    "ControlBus": ControlBus,
     "ReproducibleWildcards": ReproducibleWildcards,
     "ResolutionChooser": ResolutionChooser,
 }

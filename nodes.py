@@ -633,7 +633,7 @@ class ResolutionChooser:
             ratio_arg, orientation_arg, megapixels_arg, int(divisor)
         )
 
-        return (width, height)
+        return {"ui": {"dims": ([width, height],)}, "result": (width, height)}
 
 
 NODE_CLASS_MAPPINGS = {

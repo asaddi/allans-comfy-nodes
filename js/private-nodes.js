@@ -28,6 +28,17 @@ app.registerExtension({
 		if (node?.comfyClass === "ResolutionChooser") {
 			const pixelsWidget = node.widgets.find((w) => w.name === "megapixels");
 			pixelsWidget.label = "mebipixels";
+
+			const widthWidget = node.addWidget("number", "width", 0, () => {}, {
+				precision: 0,
+				serialize: false,
+			});
+			const heightWidget = node.addWidget("number", "height", 0, () => {}, {
+				precision: 0,
+				serialize: false,
+			});
+			widthWidget.disabled = true;
+			heightWidget.disabled = true;
 		} else if (node?.comfyClass === "LPIPSRun") {
 			const lossWidget = node.addWidget("number", "image_loss", 0, () => {}, {
 				precision: 6,
@@ -145,7 +156,7 @@ app.registerExtension({
 						Math.random() * Number.MAX_SAFE_INTEGER,
 					);
 				}
-			} else if (node?.comfyClass === "ImageDimensions") {
+			} else if (node?.comfyClass === "ImageDimensions" || node?.comfyClass === "ResolutionChooser") {
 				const widthWidget = node.widgets.find((w) => w.name === "width");
 				const heightWidget = node.widgets.find((w) => w.name === "height");
 

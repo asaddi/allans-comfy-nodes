@@ -1,12 +1,4 @@
-# Might be time to make a utility class for this kinda stuff...
-# TODO This also exists in SimpleBus
-def get_node_info(extra_pnginfo, node_id) -> dict:
-    node_id = int(node_id)
-    for node_info in extra_pnginfo["workflow"]["nodes"]:
-        if node_info["id"] == node_id:
-            return node_info
-    # WTF is this?
-    raise RuntimeError(f"Node missing from workflow: {node_id}")
+from .utils import is_input_connected
 
 
 class FloatLatch:
@@ -55,12 +47,8 @@ class FloatLatch:
         float_input: int | None = None,
     ):
         # If float_input is connected, require evaluation based on replace
-        if replace:
-            my_node_info = get_node_info(extra_pnginfo, unique_id)
-            if any(
-                input["name"] == "float_input" and input["link"] is not None
-                for input in my_node_info.get("inputs", [])
-            ):
+        if replace and float_input is None:
+            if is_input_connected(extra_pnginfo, unique_id, name="float_input"):
                 return ["float_input"]
         return []
 
@@ -124,12 +112,8 @@ class IntegerLatch:
         int_input: int | None = None,
     ):
         # If int_input is connected, require evaluation based on replace
-        if replace:
-            my_node_info = get_node_info(extra_pnginfo, unique_id)
-            if any(
-                input["name"] == "int_input" and input["link"] is not None
-                for input in my_node_info.get("inputs", [])
-            ):
+        if replace and int_input is None:
+            if is_input_connected(extra_pnginfo, unique_id, name="int_input"):
                 return ["int_input"]
         return []
 
@@ -150,4 +134,5 @@ class IntegerLatch:
 NODE_CLASS_MAPPINGS = {
     "FloatLatch": FloatLatch,
     "IntegerLatch": IntegerLatch,
+    # TextLatch is over at ComfyUI-YALLM-node
 }

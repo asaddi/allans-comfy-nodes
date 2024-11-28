@@ -3,6 +3,8 @@ import math
 
 import torch
 
+from .utils import WorkflowUtils
+
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
@@ -292,75 +294,6 @@ class PrivateSeed:
 
         # pass the value back up to the UI so it can update the button
         return {"ui": {"seed_value": (seed_value,)}, "result": (seed_value,)}
-
-
-class WorkflowUtils:
-    def __init__(self, extra_pnginfo):
-        self.node_cache: dict[int, dict] = {
-            node_info["id"]: node_info
-            for node_info in extra_pnginfo["workflow"]["nodes"]
-        }
-        self.link_cache: dict[int, tuple] = {
-            link_info[0]: link_info for link_info in extra_pnginfo["workflow"]["links"]
-        }
-
-    def get_node_info(self, node_id: int | str) -> dict:
-        node_id = int(node_id)
-        return self.node_cache[node_id]
-
-    def is_output_connected(self, node_id: int | str, type=None, name=None) -> bool:
-        assert type is not None or name is not None
-        node_info = self.get_node_info(node_id)
-        outputs = node_info.get("outputs", [])
-        return any(
-            [
-                (
-                    (type is not None and output["type"] == type)
-                    or (name is not None and output["name"] == name)
-                )
-                and output["links"]
-                for output in outputs
-            ]
-        )
-
-    def is_input_connected(self, node_id: int | str, type=None, name=None) -> bool:
-        assert type is not None or name is not None
-        node_info = self.get_node_info(node_id)
-        inputs = node_info.get("inputs", [])
-        return any(
-            [
-                (
-                    (type is not None and input["type"] == type)
-                    or (name is not None and input["name"] == name)
-                )
-                and input["link"] is not None
-                for input in inputs
-            ]
-        )
-
-    def get_downstream_nodes(self, node_id: int | str, bus_type: str) -> list[int]:
-        downstream: list[int] = []
-
-        to_check = [int(node_id)]
-        while to_check:
-            check_id = to_check.pop(0)
-
-            # Yes, consider the starting node downstream from itself as well
-            downstream.append(check_id)
-
-            node_info = self.get_node_info(check_id)
-
-            outputs = node_info.get("outputs", [])
-            bus_out = [out["links"] for out in outputs if out["type"] == bus_type][0]
-            if bus_out:
-                # NB There can be multiple outputs
-                out_ids: list[int] = [
-                    self.link_cache[link_id][3]  # dest node id
-                    for link_id in bus_out
-                ]
-                to_check.extend(out_ids)
-
-        return downstream
 
 
 class SimpleBus:

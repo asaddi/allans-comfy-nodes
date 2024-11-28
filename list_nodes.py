@@ -122,6 +122,8 @@ class LatentList:
 
 
 class SeedList:
+    # Note: This is short of the full 64-bits to match JavaScript's integer
+    # limitation.
     SEED_MIN = 0
     SEED_MAX = 2**53 - 1
 
@@ -134,8 +136,9 @@ class SeedList:
                 "seed": (
                     "INT",
                     {
-                        "min": cls.SEED_MIN,
-                        "max": cls.SEED_MAX,
+                        # Like most seeded nodes, accept the full 64-bit range
+                        "min": 0,
+                        "max": 0xFFFF_FFFF_FFFF_FFFF,
                         "default": 0,
                     },
                 ),

@@ -8,6 +8,97 @@ from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 
 
+class EmptyLatentImageSelector:
+    # Note: This is from ComfyUI's nodes.py, but I don't want to import it.
+    MAX_RESOLUTION = 16384
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                # NB EmptySD3LatentImage has step 16
+                "width": (
+                    "INT",
+                    {
+                        "default": 1024,
+                        "min": 16,
+                        "max": cls.MAX_RESOLUTION,
+                        "step": 8,
+                        "tooltip": "The width of the latent images in pixels.",
+                    },
+                ),
+                "height": (
+                    "INT",
+                    {
+                        "default": 1024,
+                        "min": 16,
+                        "max": cls.MAX_RESOLUTION,
+                        "step": 8,
+                        "tooltip": "The height of the latent images in pixels.",
+                    },
+                ),
+                "batch_size": (
+                    "INT",
+                    {
+                        "default": 1,
+                        "min": 1,
+                        "max": 4096,
+                        "tooltip": "The number of latent images in the batch.",
+                    },
+                ),
+                "type": (
+                    ["sd1", "sdxl", "sd3", "flux"],
+                    {
+                        "default": "sdxl",
+                    },
+                ),
+            }
+        }
+
+    TITLE = "Empty Latent Image Selector"
+    DESCRIPTION = (
+        "Create a new batch of empty latent images to be denoised via sampling."
+    )
+
+    RETURN_TYPES = ("LATENT",)
+    OUTPUT_TOOLTIPS = ("The empty latent image batch.",)
+
+    FUNCTION = "generate"
+
+    CATEGORY = "private/latent"
+
+    def generate(self, width, height, batch_size, type):
+        # It's just torch.zeros() of shape [B,C,H,W] with C=4 for sd1/sdxl
+        # and C=16 for sd3/flux.
+        # Implement it myself or do it via node expansion?
+
+        # Node expansion is probably more future-proof and much easier
+        # to implement other, future, latents...
+        # Plus there's the caching advantage, but I don't think it matters
+        # here...
+        graph = GraphBuilder()
+
+        if type in ("sd1", "sdxl"):
+            # Use EmptyLatentImage
+            width = (width // 8) * 8
+            height = (height // 8) * 8
+            empty_latent = graph.node(
+                "EmptyLatentImage", width=width, height=height, batch_size=batch_size
+            )
+        else:
+            # Use EmptySD3LatentImage
+            width = (width // 16) * 16
+            height = (height // 16) * 16
+            empty_latent = graph.node(
+                "EmptySD3LatentImage", width=width, height=height, batch_size=batch_size
+            )
+
+        return {
+            "result": (empty_latent.out(0),),
+            "expand": graph.finalize(),
+        }
+
+
 class ImageDimensions:
     @classmethod
     def INPUT_TYPES(cls):
@@ -794,6 +885,7 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
+    "EmptyLatentImageSelector": EmptyLatentImageSelector,
     "ImageDimensions": ImageDimensions,
     "PrivateLoraStack": PrivateLoraStack,
     "StyleModelApplyStrength": StyleModelApplyStrength,

@@ -118,7 +118,7 @@ class LPIPSRun:
             )
 
         if grayscale:
-            spatial_map = spatial_map.repeat(1, 1, 1, 3)
+            spatial_map = spatial_map.expand(-1, -1, -1, 3)
         else:
             cmap = mpl.colormaps["inferno"]
             # And now to [B,H,W] for matplotlib

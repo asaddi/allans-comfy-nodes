@@ -119,7 +119,7 @@ class DepthAnythingV2Node:
                 # From [H,W] to [H,W,C] where C=1
                 depth = depth.unsqueeze(-1)
                 # Repeat channel for grayscale
-                depth = depth.repeat(1, 1, 3)
+                depth = depth.expand(-1, -1, 3)
             else:
                 cmap = mpl.colormaps["Spectral_r"]
                 depth = cmap(depth)[:, :, :3]  # Get rid of alpha

@@ -49,6 +49,12 @@ class ImageMaskSwitch:
                 and wfu.is_input_connected(unique_id, name=mask_input)
             ):
                 needed.append(mask_input)
+
+            if image is not None:
+                # No later images will be selected, so might as well skip
+                # their masks too.
+                break
+
         return needed
 
     def run(self, unique_id, extra_pnginfo, **kwargs):

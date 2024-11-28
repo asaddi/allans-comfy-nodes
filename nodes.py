@@ -118,7 +118,7 @@ class StyleModelApplyStrength:
             }
         }
 
-    TITLE = "Apply Style Model (Strength)"
+    TITLE = "Apply Style Model with Strength"
 
     RETURN_TYPES = ("CONDITIONING",)
     FUNCTION = "expand"
@@ -377,7 +377,7 @@ class SimpleBus:
         if self._check_downstream_for_type(downstream, wf_utils, "GUIDER", guider):
             needed.append("guider")
 
-        print(f"SimpleBus #{unique_id} needed: {needed}")
+        # print(f"SimpleBus #{unique_id} needed: {needed}")
         return needed
 
     def execute(
@@ -503,7 +503,7 @@ class ControlBus(SimpleBus):
         if self._check_downstream_for_type(downstream, wf_utils, "MASK", mask):
             needed.append("mask")
 
-        print(f"ControlBus #{unique_id} needed: {needed}")
+        # print(f"ControlBus #{unique_id} needed: {needed}")
         return needed
 
     def execute(

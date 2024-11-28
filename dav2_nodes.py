@@ -84,7 +84,7 @@ class DepthAnythingV2Node:
             },
         }
 
-    TITLE = "DepthAnythingV2"
+    TITLE = "DepthAnythingV2 Run"
 
     RETURN_TYPES = ("IMAGE",)
 

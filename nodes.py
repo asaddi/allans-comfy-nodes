@@ -3,7 +3,7 @@ import math
 
 import torch
 
-from .utils import WorkflowUtils
+from .utils import PromptUtils, WorkflowUtils
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
@@ -284,13 +284,8 @@ class PrivateSeed:
         # print(f"seed_value (#{unique_id}) = {seed_value}")
 
         # In the metadata, change this node into a fixed seed
-        unique_id = int(unique_id)
-        my_info = [
-            node_info
-            for node_info in extra_pnginfo["workflow"]["nodes"]
-            if node_info["id"] == unique_id
-        ][0]
-        my_info["properties"]["randomizeSeed"] = False
+        wf_utls = WorkflowUtils(extra_pnginfo)
+        wf_utls.set_property(unique_id, "randomizeSeed", False)
 
         # pass the value back up to the UI so it can update the button
         return {"ui": {"seed_value": (seed_value,)}, "result": (seed_value,)}
@@ -329,7 +324,7 @@ class SimpleBus:
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
-                "extra_pnginfo": "EXTRA_PNGINFO",
+                "prompt": "PROMPT",
             },
         }
 
@@ -342,34 +337,24 @@ class SimpleBus:
 
     CATEGORY = "private"
 
-    def _check_downstream_for_type(
-        self, downstream, wf_utils: WorkflowUtils, type_name, input_value
+    def _check_downstream(
+        self,
+        downstream: list[str],
+        p_utils: PromptUtils,
+        input_value,
+        name: str,
+        slot: int,
     ) -> bool:
-        if (
-            wf_utils.is_input_connected(downstream[0], type=type_name)
-            and input_value is None
-        ):
+        if input_value is None and p_utils.is_input_connected(downstream[0], name):
             for check_id in downstream:
-                if wf_utils.is_output_connected(check_id, type=type_name):
-                    return True
-        return False
-
-    def _check_downstream_for_name(
-        self, downstream, wf_utils: WorkflowUtils, name, input_value
-    ) -> bool:
-        if (
-            wf_utils.is_input_connected(downstream[0], name=name)
-            and input_value is None
-        ):
-            for check_id in downstream:
-                if wf_utils.is_output_connected(check_id, name=name):
+                if p_utils.is_output_connected(check_id, slot):
                     return True
         return False
 
     def check_lazy_status(
         self,
         unique_id,
-        extra_pnginfo,
+        prompt,
         bus=None,
         model=None,
         vae=None,
@@ -379,8 +364,9 @@ class SimpleBus:
         unique_id = int(unique_id)
 
         # TODO do all this lazily
-        wf_utils = WorkflowUtils(extra_pnginfo)
-        downstream = wf_utils.get_downstream_nodes(unique_id, "SIMPLEBUS")
+        p_utils = PromptUtils(prompt)
+        downstream = p_utils.get_downstream_nodes(unique_id, 0)
+        # print(f"downstream = {downstream}")
 
         # Note: bus is not lazy (but it is optional)
 
@@ -389,16 +375,16 @@ class SimpleBus:
 
         needed = []
 
-        if self._check_downstream_for_type(downstream, wf_utils, "MODEL", model):
+        if self._check_downstream(downstream, p_utils, model, "model", 1):
             needed.append("model")
 
-        if self._check_downstream_for_type(downstream, wf_utils, "VAE", vae):
+        if self._check_downstream(downstream, p_utils, vae, "vae", 2):
             needed.append("vae")
 
-        if self._check_downstream_for_type(downstream, wf_utils, "LATENT", latent):
+        if self._check_downstream(downstream, p_utils, latent, "latent", 3):
             needed.append("latent")
 
-        if self._check_downstream_for_type(downstream, wf_utils, "GUIDER", guider):
+        if self._check_downstream(downstream, p_utils, guider, "guider", 4):
             needed.append("guider")
 
         # print(f"SimpleBus #{unique_id} needed: {needed}")
@@ -407,7 +393,7 @@ class SimpleBus:
     def execute(
         self,
         unique_id,
-        extra_pnginfo,
+        prompt,
         bus=None,
         model=None,
         vae=None,
@@ -484,7 +470,7 @@ class ControlBus(SimpleBus):
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
-                "extra_pnginfo": "EXTRA_PNGINFO",
+                "prompt": "PROMPT",
             },
         }
 
@@ -496,7 +482,7 @@ class ControlBus(SimpleBus):
     def check_lazy_status(
         self,
         unique_id,
-        extra_pnginfo,
+        prompt,
         cbus=None,
         positive=None,
         negative=None,
@@ -505,8 +491,8 @@ class ControlBus(SimpleBus):
     ):
         unique_id = int(unique_id)
 
-        wf_utils = WorkflowUtils(extra_pnginfo)
-        downstream = wf_utils.get_downstream_nodes(unique_id, "CONTROLBUS")
+        p_utils = PromptUtils(prompt)
+        downstream = p_utils.get_downstream_nodes(unique_id, 0)
 
         # Note: bus is not lazy (but it is optional)
 
@@ -515,16 +501,16 @@ class ControlBus(SimpleBus):
 
         needed = []
 
-        if self._check_downstream_for_name(downstream, wf_utils, "positive", positive):
+        if self._check_downstream(downstream, p_utils, positive, "positive", 1):
             needed.append("positive")
 
-        if self._check_downstream_for_name(downstream, wf_utils, "negative", negative):
+        if self._check_downstream(downstream, p_utils, negative, "negative", 2):
             needed.append("negative")
 
-        if self._check_downstream_for_type(downstream, wf_utils, "IMAGE", image):
+        if self._check_downstream(downstream, p_utils, image, "image", 3):
             needed.append("image")
 
-        if self._check_downstream_for_type(downstream, wf_utils, "MASK", mask):
+        if self._check_downstream(downstream, p_utils, mask, "mask", 4):
             needed.append("mask")
 
         # print(f"ControlBus #{unique_id} needed: {needed}")
@@ -533,7 +519,7 @@ class ControlBus(SimpleBus):
     def execute(
         self,
         unique_id,
-        extra_pnginfo,
+        prompt,
         cbus=None,
         positive=None,
         negative=None,

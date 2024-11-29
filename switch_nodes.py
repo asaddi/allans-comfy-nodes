@@ -1,6 +1,6 @@
 import torch
 
-from .utils import WorkflowUtils
+from .utils import PromptUtils
 
 from comfy_execution.graph import ExecutionBlocker
 
@@ -56,7 +56,7 @@ class ImageMaskSwitch:
             "optional": {},
             "hidden": {
                 "unique_id": "UNIQUE_ID",
-                "extra_pnginfo": "EXTRA_PNGINFO",
+                "prompt": "PROMPT",
             },
         }
         for index in range(cls.NUM_INPUTS):
@@ -77,10 +77,10 @@ class ImageMaskSwitch:
 
     CATEGORY = "private/switch"
 
-    def check_lazy_status(self, unique_id, extra_pnginfo, **kwargs):
+    def check_lazy_status(self, unique_id, prompt, **kwargs):
         needed = []
         # If an image is present, make sure the associated mask is evaluated
-        wfu = WorkflowUtils(extra_pnginfo)
+        pu = PromptUtils(prompt)
         for index in range(self.NUM_INPUTS):
             image = kwargs.get(f"image{index}")
             mask_input = f"mask{index}"
@@ -88,7 +88,7 @@ class ImageMaskSwitch:
             if (
                 image is not None
                 and mask is None
-                and wfu.is_input_connected(unique_id, name=mask_input)
+                and pu.is_input_connected(unique_id, mask_input)
             ):
                 needed.append(mask_input)
 
@@ -99,7 +99,7 @@ class ImageMaskSwitch:
 
         return needed
 
-    def run(self, unique_id, extra_pnginfo, **kwargs):
+    def run(self, unique_id, prompt, **kwargs):
         # The LoadImage node returns an empty/default mask [1,64,64] if it
         # loads an image without an alpha. We'll do the same whenever the
         # mask is missing.

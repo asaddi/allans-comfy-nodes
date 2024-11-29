@@ -5,6 +5,48 @@ from .utils import WorkflowUtils
 from comfy_execution.graph import ExecutionBlocker
 
 
+class GenericSwitch:
+    # Being server-side-only, it means we have a fixed number of inputs
+    NUM_INPUTS = 2
+    INPUT_TYPE = "MODEL"
+    INPUT_NAME = "model"
+    TITLE = "Model Switch 2"
+    # NB Subclasses must re-define this as well
+    RETURN_TYPES = (INPUT_TYPE,)
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "optional": {},
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+            },
+        }
+
+        for index in range(cls.NUM_INPUTS):
+            d["optional"][f"{cls.INPUT_NAME}{index}"] = (cls.INPUT_TYPE,)
+
+        return d
+
+    FUNCTION = "switch"
+
+    CATEGORY = "private/switch"
+
+    def switch(self, unique_id, **kwargs):
+        for index in range(self.NUM_INPUTS):
+            input = kwargs.get(f"{self.INPUT_NAME}{index}")
+            if input is not None:
+                return (input,)
+        return (ExecutionBlocker(f"Node {unique_id}: All inputs missing"),)
+
+
+class VAESwitch2(GenericSwitch):
+    INPUT_TYPE = "VAE"
+    INPUT_NAME = "vae"
+    TITLE = "VAE Switch 2"
+    RETURN_TYPES = (INPUT_TYPE,)
+
+
 class ImageMaskSwitch:
     NUM_INPUTS = 2
 
@@ -79,6 +121,8 @@ class ImageMaskSwitch4(ImageMaskSwitch):
 
 
 NODE_CLASS_MAPPINGS = {
+    "ModelSwitch2": GenericSwitch,
+    "VAESwitch2": VAESwitch2,
     "ImageMaskSwitch2": ImageMaskSwitch,
     "ImageMaskSwitch4": ImageMaskSwitch4,
 }

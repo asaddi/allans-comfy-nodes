@@ -160,23 +160,3 @@ class WorkflowUtils:
                 to_check.extend(out_ids)
 
         return downstream
-
-
-# The following convenience functions use the "nocache" versions, meant for
-# one-off queries.
-
-
-def is_input_connected(
-    extra_pnginfo, node_id: int | str, type: str | None = None, name: str | None = None
-) -> bool:
-    inst = WorkflowUtils(extra_pnginfo)
-    node_info = inst.get_node_info_nocache(node_id)
-    return inst.is_input_connected_nocache(node_info, type=type, name=name)
-
-
-def is_output_connected(
-    extra_pnginfo, node_id: int | str, type: str | None = None, name: str | None = None
-) -> bool:
-    inst = WorkflowUtils(extra_pnginfo)
-    node_info = inst.get_node_info_nocache(node_id)
-    return inst.is_output_connected_nocache(node_info, type=type, name=name)

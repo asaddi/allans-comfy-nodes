@@ -1,4 +1,4 @@
-from .utils import is_input_connected
+from .utils import PromptUtils
 
 
 class FloatLatch:
@@ -25,7 +25,7 @@ class FloatLatch:
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
-                "extra_pnginfo": "EXTRA_PNGINFO",
+                "prompt": "PROMPT",
             },
         }
 
@@ -43,12 +43,13 @@ class FloatLatch:
         value: int,
         replace: bool,
         unique_id,
-        extra_pnginfo,
+        prompt,
         float_input: int | None = None,
     ):
         # If float_input is connected, require evaluation based on replace
         if replace and float_input is None:
-            if is_input_connected(extra_pnginfo, unique_id, name="float_input"):
+            pu = PromptUtils(prompt)
+            if pu.is_input_connected(unique_id, "float_input"):
                 return ["float_input"]
         return []
 
@@ -57,7 +58,7 @@ class FloatLatch:
         value: int,
         replace: bool,
         unique_id,
-        extra_pnginfo,
+        prompt,
         float_input: int | None = None,
     ):
         if float_input is not None and replace:
@@ -90,7 +91,7 @@ class IntegerLatch:
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
-                "extra_pnginfo": "EXTRA_PNGINFO",
+                "prompt": "PROMPT",
             },
         }
 
@@ -108,12 +109,13 @@ class IntegerLatch:
         value: int,
         replace: bool,
         unique_id,
-        extra_pnginfo,
+        prompt,
         int_input: int | None = None,
     ):
         # If int_input is connected, require evaluation based on replace
         if replace and int_input is None:
-            if is_input_connected(extra_pnginfo, unique_id, name="int_input"):
+            pu = PromptUtils(prompt)
+            if pu.is_input_connected(unique_id, "int_input"):
                 return ["int_input"]
         return []
 
@@ -122,7 +124,7 @@ class IntegerLatch:
         value: int,
         replace: bool,
         unique_id,
-        extra_pnginfo,
+        prompt,
         int_input: int | None = None,
     ):
         if int_input is not None and replace:

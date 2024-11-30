@@ -1,9 +1,91 @@
 from pprint import pprint
+import random
 
 import torch
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
+
+
+class ComboType(str):
+    def __ne__(self, other):
+        if self == "*" and isinstance(other, list):
+            return False
+        return True
+
+
+class RandomCombo:
+    NUM_COMBOS = 2
+
+    def __init__(self):
+        self._random = random.Random()
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "required": {
+                "seed": (
+                    "INT",
+                    {
+                        "min": 0,
+                        "max": 0xFFFFFFFF_FFFFFFFF,
+                        "default": 0,
+                    },
+                ),
+            },
+        }
+        for index in range(cls.NUM_COMBOS):
+            d["required"][f"choice{index}"] = (
+                "STRING",
+                {"default": f"choice-{index + 1}"},
+            )
+            step = 1.0 / cls.NUM_COMBOS
+            d["required"][f"threshold{index}"] = (
+                "FLOAT",
+                {
+                    "min": 0.0,
+                    "max": 1.0,
+                    "default": round(step + index * step, 3),
+                },
+            )
+        return d
+
+    TITLE = "Random Combo 2"
+
+    RETURN_TYPES = (ComboType("*"),)
+
+    FUNCTION = "choose"
+
+    CATEGORY = "private/switch"
+
+    def choose(self, seed, **kwargs):
+        # I don't know if it's possible to read the COMBO choices without
+        # doing frontend stuff... which we want to avoid, because we want
+        # this node usable in API.
+
+        # So the onus is on the user to set correct values
+        choices: tuple[float, str] = []
+        for index in range(self.NUM_COMBOS):
+            choice: str = kwargs.get(f"choice{index}")
+            thresh: float = kwargs.get(f"threshold{index}")
+            if choice and thresh is not None:  # Can they be empty??
+                choices.append((thresh, choice))
+
+        choices.sort(key=lambda x: x[0])
+
+        # This feels dumb, but we'll go with it for now.
+        # Other option is to convert seed to a float somehow.
+        self._random.seed(seed)
+        num = self._random.random()
+
+        # Garbage in, garbage out.
+        final_choice = choices[-1][1]
+        for thresh, choice in choices:
+            if num <= thresh:
+                final_choice = choice
+                break
+
+        return (final_choice,)
 
 
 class MaskBlur:
@@ -173,6 +255,7 @@ class CLIPDistance:
 
 
 NODE_CLASS_MAPPINGS = {
+    "RandomCombo2": RandomCombo,
     "MaskBlur": MaskBlur,
     "AnySwitch2": PrivateAnySwitch,
     "AnySwitch4": PrivateAnySwitch4,

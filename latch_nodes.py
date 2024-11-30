@@ -1,4 +1,4 @@
-from .utils import PromptUtils
+from .utils import PromptUtils, WorkflowUtils
 
 
 class FloatLatch:
@@ -26,6 +26,7 @@ class FloatLatch:
             "hidden": {
                 "unique_id": "UNIQUE_ID",
                 "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
             },
         }
 
@@ -44,6 +45,7 @@ class FloatLatch:
         replace: bool,
         unique_id,
         prompt,
+        extra_pnginfo,
         float_input: int | None = None,
     ):
         # If float_input is connected, require evaluation based on replace
@@ -59,10 +61,14 @@ class FloatLatch:
         replace: bool,
         unique_id,
         prompt,
+        extra_pnginfo,
         float_input: int | None = None,
     ):
         if float_input is not None and replace:
             value = float_input
+
+        wfu = WorkflowUtils(extra_pnginfo)
+        wfu.set_widget(unique_id, 0, value)
 
         return {"ui": {"value": (value,)}, "result": (value,)}
 
@@ -92,6 +98,7 @@ class IntegerLatch:
             "hidden": {
                 "unique_id": "UNIQUE_ID",
                 "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
             },
         }
 
@@ -110,6 +117,7 @@ class IntegerLatch:
         replace: bool,
         unique_id,
         prompt,
+        extra_pnginfo,
         int_input: int | None = None,
     ):
         # If int_input is connected, require evaluation based on replace
@@ -125,10 +133,14 @@ class IntegerLatch:
         replace: bool,
         unique_id,
         prompt,
+        extra_pnginfo,
         int_input: int | None = None,
     ):
         if int_input is not None and replace:
             value = int_input
+
+        wfu = WorkflowUtils(extra_pnginfo)
+        wfu.set_widget(unique_id, 0, value)
 
         return {"ui": {"value": (value,)}, "result": (value,)}
 

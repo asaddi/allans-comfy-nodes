@@ -61,7 +61,7 @@ class WorkflowUtils:
         # Note: API mode does not have extra_pnginfo (it is None)
         self.extra_pnginfo = extra_pnginfo
 
-    def set_property(self, node_id: str | int, property_name: str, value):
+    def get_node_info(self, node_id: str | int) -> dict | None:
         # Be somewhat paranoid since API mode offers much less access
         if (
             self.extra_pnginfo is not None
@@ -69,6 +69,21 @@ class WorkflowUtils:
             and (nodes := workflow.get("nodes")) is not None
         ):
             node_id = int(node_id)
+            # TODO For the time being, we aren't caching anything.
+            # Concievably, if there are a large number of nodes, a lot of time
+            # could be wasted searching.
             my_node = [node_info for node_info in nodes if node_info["id"] == node_id]
             if my_node:
-                my_node[0]["properties"][property_name] = value
+                return my_node[0]
+        return None
+
+    def set_property(self, node_id: str | int, property_name: str, value):
+        if (my_node := self.get_node_info(node_id)) is not None:
+            my_node["properties"][property_name] = value
+
+    def set_widget(self, node_id: str | int, slot: int, value):
+        if (my_node := self.get_node_info(node_id)) is not None:
+            values = my_node.get("widgets_values", [])
+            # TODO When would there be a mismatch?
+            if slot < len(values):
+                values[slot] = value

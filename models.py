@@ -54,7 +54,7 @@ class ModelManager:
 
         with open(models_file) as inp:
             d = yaml.load(inp, yaml.Loader)
-        self._mtime = (models_file, models_file.stat().st_mtime)
+        self._mtime = (str(models_file), models_file.stat().st_mtime)
 
         self.LIST = []
         for value in d["models"]:
@@ -66,7 +66,7 @@ class ModelManager:
 
     def refresh(self):
         models_file = self._get_models_file()
-        if self._mtime != (models_file, models_file.stat().st_mtime):
+        if self._mtime != (str(models_file), models_file.stat().st_mtime):
             self.load()
 
     def download(self, name: str) -> Path:

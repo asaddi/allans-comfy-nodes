@@ -132,6 +132,9 @@ def pil_pad_square(image: Image.Image) -> Image.Image:
     return canvas
 
 
+# XXX End of reference code copy & paste
+
+
 # FIXME Now I feel dumb for wasting so much time on pad_image
 def pad_square(image: Tensor) -> Tensor:
     # Reminder: ComfyUI images are [B,H,W,C]
@@ -168,14 +171,16 @@ def format_tags(tags) -> str:
     )
 
 
-@dataclass
-class RatingDisplay:
-    label: str
-    value: float
+TagProbs = dict[str, float]
 
-    @property
-    def formatted(self):
-        return f"{self.label}:{self.value:.3f}"
+
+def get_tag_probs(probs: Tensor, labels: LabelData) -> tuple[TagProbs, TagProbs]:
+    tag_probs = list(zip(labels.names, probs.numpy().tolist()))
+
+    ratings_probs = dict(tag_probs[i] for i in labels.rating)
+    general_probs = dict(tag_probs[i] for i in labels.general)
+
+    return ratings_probs, general_probs
 
 
 class WDv3Model:
@@ -242,9 +247,9 @@ class WDv3Tagger:
 
     TITLE = "WDv3 Tagger"
 
-    RETURN_TYPES = ("STRING", "STRING", "TAGPROBS")
-    RETURN_NAMES = ("general_tags", "char_tags", "rating_tag_probs")
-    OUTPUT_IS_LIST = (True, True, True)
+    RETURN_TYPES = ("STRING", "STRING", "TAGPROBS", "TAGPROBS")
+    RETURN_NAMES = ("general_tags", "char_tags", "raw_rating", "raw_general")
+    OUTPUT_IS_LIST = (True, True, True, True)
 
     FUNCTION = "execute"
 
@@ -268,6 +273,7 @@ class WDv3Tagger:
         # The output lists
         general_tags = []
         char_tags = []
+        general_out = []
         rating_out = []
 
         # TODO How to deal with batched images properly?
@@ -306,16 +312,14 @@ class WDv3Tagger:
             general_tags.append(format_tags(general))
             char_tags.append(format_tags(character))
 
-            output_ratings = {}
-            for tag, prob in ratings.items():
-                output_ratings[str(tag)] = float(prob)
-
-            rating_out.append(output_ratings)
+            rating_probs, general_probs = get_tag_probs(outputs.squeeze(0), labels)
+            rating_out.append(rating_probs)
+            general_out.append(general_probs)
 
         # move model to offload device
         model = model.to(offload_device)
 
-        return (general_tags, char_tags, rating_out)
+        return (general_tags, char_tags, rating_out, general_out)
 
 
 NODE_CLASS_MAPPINGS = {

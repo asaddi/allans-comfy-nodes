@@ -91,7 +91,12 @@ class ImageRouter:
                     },
                 ),
                 "func": (["argmax", "threshold"],),
-                "arg": ("FLOAT",),
+                "arg": (
+                    "FLOAT",
+                    {
+                        "default": 0.35,
+                    },
+                ),
             },
         }
 
@@ -117,7 +122,7 @@ class ImageRouter:
     def proc_threshold(self, tag_probs: dict[str, float], arg: float) -> list[str]:
         tags = list(tag_probs.keys())
         probs = np.array(list(tag_probs.values()))
-        indices = np.where(probs >= arg)[0]
+        indices = np.where(probs > arg)[0]
         matched = [tags[i] for i in indices]
         return matched
 

@@ -247,6 +247,8 @@ class WDv3Tagger:
 
     TITLE = "WDv3 Tagger"
 
+    INPUT_IS_LIST = True
+
     RETURN_TYPES = ("STRING", "STRING", "TAGPROBS", "TAGPROBS")
     RETURN_NAMES = ("general_tags", "char_tags", "raw_rating", "raw_general")
     OUTPUT_IS_LIST = (True, True, True, True)
@@ -258,6 +260,15 @@ class WDv3Tagger:
     def execute(
         self, wdv3_model, image: Tensor, gen_threshold: float, char_threshold: float
     ):
+        # Everything will be list. For everything else except the image,
+        # only use the first element.
+        wdv3_model = wdv3_model[0]
+        # In theory, I could zip_longest the following + image and do it
+        # that way, allowing each batched image to have its own
+        # threshold. If there ever comes a need, I'll change it.
+        gen_threshold = gen_threshold[0]
+        char_threshold = char_threshold[0]
+
         labels = wdv3_model["labels"]
         transform = wdv3_model["transform"]
         model = wdv3_model["model"]
@@ -268,53 +279,61 @@ class WDv3Tagger:
         # move model to GPU, if available
         model = model.to(torch_device)
 
-        image = image.permute(0, 3, 1, 2)  # To [B,C,H,W], suitable for to_pil_image
-
         # The output lists
         general_tags = []
         char_tags = []
         general_out = []
         rating_out = []
 
-        # TODO How to deal with batched images properly?
-        for img in image:
-            print("Loading image and preprocessing...")
-            # This seems kinda dumb, but I'm going to treat transform like a
-            # blackbox and only feed it PIL images.
-            img_input = torchvision.transforms.functional.to_pil_image(img)
-            # ensure image is RGB
-            img_input = pil_ensure_rgb(img_input)
-            # pad to square with white background
-            img_input = pil_pad_square(img_input)
-            # run the model's input transform to convert to tensor and rescale
-            inputs: Tensor = transform(img_input).unsqueeze(0)
-            # NCHW image RGB to BGR
-            inputs = inputs[:, [2, 1, 0]]
+        # So we take a list of batched images and then further process each
+        # image in those batches individually. This has the potential of
+        # greatly exploding our output lists.
 
-            print("Running inference...")
-            with torch.inference_mode():
-                inputs = inputs.to(torch_device)
-                # run the model
-                outputs = model.forward(inputs)
-                # apply the final activation function (timm doesn't support doing this internally)
-                outputs = nn.functional.sigmoid(outputs)
-                # move output to CPU
-                outputs = outputs.to("cpu")
+        # If you want sanity, rebatch the input image into batches of 1.
 
-            print("Processing results...")
-            caption, taglist, ratings, character, general = get_tags(
-                probs=outputs.squeeze(0),
-                labels=labels,
-                gen_threshold=gen_threshold,
-                char_threshold=char_threshold,
-            )
+        for batched_image in image:
+            batched_image = batched_image.permute(
+                0, 3, 1, 2
+            )  # To [B,C,H,W], suitable for to_pil_image
 
-            general_tags.append(format_tags(general))
-            char_tags.append(format_tags(character))
+            for img in batched_image:
+                print("Loading image and preprocessing...")
+                # This seems kinda dumb, but I'm going to treat transform like a
+                # blackbox and only feed it PIL images.
+                img_input = torchvision.transforms.functional.to_pil_image(img)
+                # ensure image is RGB
+                img_input = pil_ensure_rgb(img_input)
+                # pad to square with white background
+                img_input = pil_pad_square(img_input)
+                # run the model's input transform to convert to tensor and rescale
+                inputs: Tensor = transform(img_input).unsqueeze(0)
+                # NCHW image RGB to BGR
+                inputs = inputs[:, [2, 1, 0]]
 
-            rating_probs, general_probs = get_tag_probs(outputs.squeeze(0), labels)
-            rating_out.append(rating_probs)
-            general_out.append(general_probs)
+                print("Running inference...")
+                with torch.inference_mode():
+                    inputs = inputs.to(torch_device)
+                    # run the model
+                    outputs = model.forward(inputs)
+                    # apply the final activation function (timm doesn't support doing this internally)
+                    outputs = nn.functional.sigmoid(outputs)
+                    # move output to CPU
+                    outputs = outputs.to("cpu")
+
+                print("Processing results...")
+                _, _, _, character, general = get_tags(
+                    probs=outputs.squeeze(0),
+                    labels=labels,
+                    gen_threshold=gen_threshold,
+                    char_threshold=char_threshold,
+                )
+
+                general_tags.append(format_tags(general))
+                char_tags.append(format_tags(character))
+
+                rating_probs, general_probs = get_tag_probs(outputs.squeeze(0), labels)
+                rating_out.append(rating_probs)
+                general_out.append(general_probs)
 
         # move model to offload device
         model = model.to(offload_device)

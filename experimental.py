@@ -1,10 +1,84 @@
 from pprint import pprint
 import random
+import re
 
+import numpy as np
 import torch
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
+
+
+class ImageRouter:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "tag_probs": ("TAGPROBS",),
+                "match_regexp": (
+                    "STRING",
+                    {
+                        "default": "tag1|tag2",
+                    },
+                ),
+                "func": (["argmax", "threshold"],),
+                "arg": ("FLOAT",),
+            },
+        }
+
+    TITLE = "Image Router"
+
+    RETURN_TYPES = ("IMAGE", "IMAGE")
+    RETURN_NAMES = ("pos_match", "neg_match")
+
+    FUNCTION = "route"
+
+    CATEGORY = "private/switch"
+
+    def proc_argmax(self, tag_probs: dict[str, float], arg: float) -> list[str]:
+        tags = list(tag_probs.keys())
+        probs = np.array(list(tag_probs.values()))
+        # We want all indices, not just the first
+        # So ironically, we can't use argmax
+        max_prob = np.max(probs)
+        max_indices = np.where(probs == max_prob)[0]
+        matched = [tags[i] for i in max_indices]
+        return matched
+
+    def proc_threshold(self, tag_probs: dict[str, float], arg: float) -> list[str]:
+        tags = list(tag_probs.keys())
+        probs = np.array(list(tag_probs.values()))
+        indices = np.where(probs >= arg)[0]
+        matched = [tags[i] for i in indices]
+        return matched
+
+    def route(
+        self,
+        image: torch.Tensor,
+        tag_probs: dict[str, float],
+        match_regexp: str,
+        func: str,
+        arg: float,
+    ):
+        funcs = {
+            "argmax": self.proc_argmax,
+            "threshold": self.proc_threshold,
+        }
+        tags = funcs[func](tag_probs, arg)
+        print(f"resolved tags = {tags}")
+
+        matcher = re.compile(match_regexp)
+        matched = any([matcher.fullmatch(tag) is not None for tag in tags])
+
+        # Ah crap, how will this work???
+        # Hopefully a silent ExecutionBlocker does what we need...
+        # Well, it does work, but it's apparently discouraged. How
+        # else would we do it? Two string outputs (to be used as save prefix?)
+        return (
+            image if matched else ExecutionBlocker(None),
+            ExecutionBlocker(None) if matched else image,
+        )
 
 
 class ComboType(str):
@@ -255,6 +329,7 @@ class CLIPDistance:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ImageRouter": ImageRouter,
     "RandomCombo2": RandomCombo,
     "MaskBlur": MaskBlur,
     "AnySwitch2": PrivateAnySwitch,

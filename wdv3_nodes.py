@@ -242,8 +242,8 @@ class WDv3Tagger:
 
     TITLE = "WDv3 Tagger"
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING")
-    RETURN_NAMES = ("general_tags", "char_tags", "rating_tags")
+    RETURN_TYPES = ("STRING", "STRING", "TAGPROBS")
+    RETURN_NAMES = ("general_tags", "char_tags", "rating_tag_probs")
     OUTPUT_IS_LIST = (True, True, True)
 
     FUNCTION = "execute"
@@ -268,7 +268,7 @@ class WDv3Tagger:
         # The output lists
         general_tags = []
         char_tags = []
-        rating_tags = []
+        rating_out = []
 
         # TODO How to deal with batched images properly?
         for img in image:
@@ -306,22 +306,16 @@ class WDv3Tagger:
             general_tags.append(format_tags(general))
             char_tags.append(format_tags(character))
 
-            # The rating tags are static making their probability/confidence
-            # level significant.
-            # I'm not sure of a good textual format for them yet, so I'll
-            # just go with this for now. See RatingDisplay.formatted
-            output_ratings = [
-                RatingDisplay(label=label, value=value)
-                for label, value in ratings.items()
-            ]
-            output_ratings.sort(key=lambda x: x.value, reverse=True)
+            output_ratings = {}
+            for tag, prob in ratings.items():
+                output_ratings[str(tag)] = float(prob)
 
-            rating_tags.append(", ".join([r.formatted for r in output_ratings]))
+            rating_out.append(output_ratings)
 
         # move model to offload device
         model = model.to(offload_device)
 
-        return (general_tags, char_tags, rating_tags)
+        return (general_tags, char_tags, rating_out)
 
 
 NODE_CLASS_MAPPINGS = {

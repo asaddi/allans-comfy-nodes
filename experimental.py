@@ -9,6 +9,74 @@ from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
 
 
+class AnyType(str):
+    def __ne__(self, other):
+        if self == "*":
+            # If we're the wildcard, match anything
+            return False
+        return super().__ne__(other)
+
+
+class GenericRelay:
+    NUM_INPUTS = 2
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "required": {
+                "control": (
+                    "INT",
+                    {
+                        "min": 0,
+                        "max": cls.NUM_INPUTS - 1,
+                        "default": 0,
+                    },
+                ),
+            },
+            "optional": {},
+        }
+
+        for index in range(cls.NUM_INPUTS):
+            d["optional"][f"input{index}"] = (
+                "*",
+                {
+                    "lazy": True,
+                },
+            )
+
+        return d
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, input_types):
+        # We've had luck using this to prevent validation errors on our
+        # wildcard inputs, so we'll just stick with it.
+        # (As opposed to using the str subclass, as done below.)
+        return True
+
+    TITLE = "Any Relay 2"
+
+    RETURN_TYPES = (AnyType("*"),)
+
+    FUNCTION = "switch"
+
+    CATEGORY = "private/switch"
+
+    def check_lazy_status(self, control, **kwargs):
+        # Only need the one chosen by control
+        input_name = f"input{control}"
+        input = kwargs.get(input_name)
+        if input is None:
+            # NB We don't check if the input is actually connected.
+            # So this should actually output an error if there's nothing there
+            # (the desired behavior)
+            return [input_name]
+        return []
+
+    def switch(self, control, **kwargs):
+        input = kwargs.get(f"input{control}")
+        return (input,)
+
+
 class ImageRouter:
     @classmethod
     def INPUT_TYPES(cls):
@@ -198,14 +266,6 @@ class MaskBlur:
         }
 
 
-class AnyType(str):
-    def __ne__(self, other):
-        if self == "*":
-            # If we're the wildcard, match anything
-            return False
-        return super().__ne__(other)
-
-
 # Server-side-only implementation of an "any switch"
 class PrivateAnySwitch:
     # Being server-side-only, it means we have a fixed number of inputs
@@ -332,8 +392,9 @@ NODE_CLASS_MAPPINGS = {
     "ImageRouter": ImageRouter,
     "RandomCombo2": RandomCombo,
     "MaskBlur": MaskBlur,
-    "AnySwitch2": PrivateAnySwitch,
-    "AnySwitch4": PrivateAnySwitch4,
+    "AnyRelay2": GenericRelay,
+    # "AnySwitch2": PrivateAnySwitch,
+    # "AnySwitch4": PrivateAnySwitch4,
     "DumpToConsole": DumpToConsole,
-    "CLIPDistance": CLIPDistance,
+    # "CLIPDistance": CLIPDistance,
 }

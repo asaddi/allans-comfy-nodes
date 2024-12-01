@@ -164,8 +164,7 @@ class ComboType(str):
 class RandomCombo:
     NUM_COMBOS = 2
 
-    def __init__(self):
-        self._random = random.Random()
+    _random = random.Random()
 
     @classmethod
     def INPUT_TYPES(cls):

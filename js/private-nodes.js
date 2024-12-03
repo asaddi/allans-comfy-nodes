@@ -29,6 +29,9 @@ app.registerExtension({
 			const pixelsWidget = node.widgets.find((w) => w.name === "megapixels");
 			pixelsWidget.label = "mebipixels";
 
+			const divWidget = node.widgets.find((w) => w.name === "divisor");
+			divWidget.label = "multiple";
+
 			const widthWidget = node.addWidget("number", "width", 0, () => {}, {
 				precision: 0,
 				serialize: false,

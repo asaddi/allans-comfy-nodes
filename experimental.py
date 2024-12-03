@@ -9,6 +9,53 @@ from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
 
 
+class ValueSubstitution:
+    """
+    Currently used to add a list value (e.g. from FloatList) to filenames.
+
+    The "%" subsitutution that occurs in the frontend only appears to occur
+    once and does not work for lists.
+
+    Images going into the save node should be re-batched to 1.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "value": (
+                    "*",
+                    {
+                        "forceInput": True,
+                    },
+                ),
+                "template": (
+                    "STRING",
+                    {
+                        "default": "ComfyUI-{value}",
+                    },
+                ),
+            }
+        }
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, input_types):
+        # TODO Check template's type
+        return True
+
+    TITLE = "Value Substitution"
+
+    RETURN_TYPES = ("STRING",)
+
+    FUNCTION = "render"
+
+    CATEGORY = "private/list"
+
+    def render(self, value, template: str):
+        text = template.replace("{value}", str(value))
+        return (text,)
+
+
 class AnyType(str):
     def __ne__(self, other):
         if self == "*":
@@ -393,6 +440,7 @@ class CLIPDistance:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ValueSubstitution": ValueSubstitution,
     "ImageRouter": ImageRouter,
     "RandomCombo2": RandomCombo,
     "MaskBlur": MaskBlur,

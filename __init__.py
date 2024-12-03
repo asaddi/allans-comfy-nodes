@@ -1,5 +1,6 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from importlib import import_module
+import warnings
 
 from .nodes import NODE_CLASS_MAPPINGS
 
@@ -19,7 +20,7 @@ for mod_name in modules:
     try:
         mod = import_module(f".{mod_name}", package=__name__)
     except ImportError:
-        continue
+        warnings.warn(f"{__name__}: Failed to import nodes from {mod_name}")
 
     NODE_CLASS_MAPPINGS.update(mod.NODE_CLASS_MAPPINGS)
 

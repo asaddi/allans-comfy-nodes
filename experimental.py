@@ -18,15 +18,25 @@ BASE_PATH = Path(__file__).parent.resolve()
 
 
 class MakeImageGrid:
-    # TODO These should probably be configurable?
-    GRID_WIDTH = 128
-    GRID_HEIGHT = 128
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "image": ("IMAGE",),
+                "cell_width": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 128,
+                    },
+                ),
+                "cell_height": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 128,
+                    },
+                ),
                 "columns": (
                     "INT",
                     {
@@ -66,12 +76,16 @@ class MakeImageGrid:
     def make_grid(
         self,
         image: list[torch.Tensor],
+        cell_width: list[int],
+        cell_height: list[int],
         columns: list[int],
         rows: list[int],
         major: list[bool],
     ):
         # Same disclaimer as my other INPUT_IS_LIST nodes
         # I'm going to assume the simple case until otherwise needed
+        cell_width = cell_width[0]
+        cell_height = cell_height[0]
         columns: int = columns[0]
         rows: int = rows[0]
         major: bool = major[0]
@@ -103,7 +117,7 @@ class MakeImageGrid:
                 )  # First convert to [B,C,H,W]
                 # Then resize to target
                 new_image = F.interpolate(
-                    centered, (self.GRID_HEIGHT, self.GRID_WIDTH), mode="bilinear"
+                    centered, (cell_height, cell_width), mode="bilinear"
                 )
 
                 input_images.append(new_image[0])  # Back to [C,H,W]
@@ -115,7 +129,7 @@ class MakeImageGrid:
         # Ooh, itertools.batched is Python 3.12+ only. FIXME?
         for batch in itertools.batched(input_images, rows * columns):
             # NB At the moment we don't pad between images
-            grid = torch.zeros((4, self.GRID_HEIGHT * rows, self.GRID_WIDTH * columns))
+            grid = torch.zeros((4, cell_height * rows, cell_width * columns))
             for idx, img in enumerate(batch):
                 if major:  # row-major
                     row = idx // columns
@@ -127,8 +141,8 @@ class MakeImageGrid:
                 # Place onto grid
                 grid[
                     :,
-                    row * self.GRID_HEIGHT : (row + 1) * self.GRID_HEIGHT,
-                    col * self.GRID_WIDTH : (col + 1) * self.GRID_WIDTH,
+                    row * cell_height : (row + 1) * cell_height,
+                    col * cell_width : (col + 1) * cell_width,
                 ] = img
 
             grid = grid.permute(1, 2, 0).unsqueeze(0)  # To [B,H,W,C]

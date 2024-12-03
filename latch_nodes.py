@@ -16,7 +16,7 @@ class FloatLatch:
             },
             "optional": {
                 "float_input": (
-                    "INT",
+                    "FLOAT",
                     {
                         "forceInput": True,
                         "lazy": True,

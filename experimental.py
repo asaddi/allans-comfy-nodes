@@ -1,3 +1,4 @@
+import itertools
 from pathlib import Path
 from pprint import pprint
 import random
@@ -6,6 +7,7 @@ import re
 import PIL.Image, PIL.ImageDraw, PIL.ImageFont
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torchvision.transforms.functional as TVF
 
 from comfy_execution.graph import ExecutionBlocker
@@ -13,6 +15,126 @@ from comfy_execution.graph_utils import GraphBuilder
 
 
 BASE_PATH = Path(__file__).parent.resolve()
+
+
+class MakeImageGrid:
+    # TODO These should probably be configurable?
+    GRID_WIDTH = 128
+    GRID_HEIGHT = 128
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "columns": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 5,
+                    },
+                ),
+                "rows": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 5,
+                    },
+                ),
+                "major": (
+                    "BOOLEAN",
+                    {
+                        "label_on": "row_major",
+                        "label_off": "col_major",
+                        "default": True,
+                    },
+                ),
+            }
+        }
+
+    TITLE = "Make Image Grid"
+
+    INPUT_IS_LIST = True
+
+    RETURN_TYPES = ("IMAGE",)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "make_grid"
+
+    CATEGORY = "private/image"
+
+    def make_grid(
+        self,
+        image: list[torch.Tensor],
+        columns: list[int],
+        rows: list[int],
+        major: list[bool],
+    ):
+        # Same disclaimer as my other INPUT_IS_LIST nodes
+        # I'm going to assume the simple case until otherwise needed
+        columns: int = columns[0]
+        rows: int = rows[0]
+        major: bool = major[0]
+
+        input_images = []
+        for batched_image in image:
+            for img in batched_image:
+                # TODO I'm just gonna assume it's already [0, 1] float32
+                height, width, channels = img.shape
+
+                if channels == 1:
+                    # Convert to RGB if needed (will we ever get single-channel?)
+                    img = img.expand(-1, -1, 3)
+                if channels < 4:
+                    # Add alpha channel
+                    alpha = torch.ones((height, width, 1), dtype=torch.float32)
+                    img = torch.cat((img, alpha), dim=2)
+
+                # Center image on a square
+                longest = max(height, width)
+                centered = torch.zeros((longest, longest, 4), dtype=torch.float32)
+                top = (longest - height) // 2
+                left = (longest - width) // 2
+                centered[top : top + height, left : left + width, :] = img
+
+                # Currently have square image [H,W,C], C=4
+                centered = centered.permute(2, 0, 1).unsqueeze(
+                    0
+                )  # First convert to [B,C,H,W]
+                # Then resize to target
+                new_image = F.interpolate(
+                    centered, (self.GRID_HEIGHT, self.GRID_WIDTH), mode="bilinear"
+                )
+
+                input_images.append(new_image[0])  # Back to [C,H,W]
+
+        # Yes, I know of torchvision's make_grid
+        # For now, we want column-major as an option
+
+        output_images = []
+        # Ooh, itertools.batched is Python 3.12+ only. FIXME?
+        for batch in itertools.batched(input_images, rows * columns):
+            # NB At the moment we don't pad between images
+            grid = torch.zeros((4, self.GRID_HEIGHT * rows, self.GRID_WIDTH * columns))
+            for idx, img in enumerate(batch):
+                if major:  # row-major
+                    row = idx // columns
+                    col = idx % columns
+                else:
+                    row = idx % rows
+                    col = idx // rows
+
+                # Place onto grid
+                grid[
+                    :,
+                    row * self.GRID_HEIGHT : (row + 1) * self.GRID_HEIGHT,
+                    col * self.GRID_WIDTH : (col + 1) * self.GRID_WIDTH,
+                ] = img
+
+            grid = grid.permute(1, 2, 0).unsqueeze(0)  # To [B,H,W,C]
+            output_images.append(grid)
+
+        return (output_images,)
 
 
 class ImageAlphaText:
@@ -531,6 +653,7 @@ class CLIPDistance:
 
 
 NODE_CLASS_MAPPINGS = {
+    "MakeImageGrid": MakeImageGrid,
     "ImageAlphaText": ImageAlphaText,
     # "ValueSubstitution": ValueSubstitution,
     "ImageRouter": ImageRouter,

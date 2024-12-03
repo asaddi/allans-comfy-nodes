@@ -1,12 +1,103 @@
+from pathlib import Path
 from pprint import pprint
 import random
 import re
 
+import PIL.Image, PIL.ImageDraw, PIL.ImageFont
 import numpy as np
 import torch
+import torchvision.transforms.functional as TVF
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
+
+
+BASE_PATH = Path(__file__).parent.resolve()
+
+
+class ImageAlphaText:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "value": (
+                    "*",
+                    {
+                        "forceInput": True,
+                    },
+                ),
+                # Corner too, but for now we'll just force bottom-right.
+            },
+        }
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, input_types):
+        # TODO Check image's type
+        return True
+
+    TITLE = "Image Alpha Text"
+
+    RETURN_TYPES = ("IMAGE",)
+
+    FUNCTION = "engrave"
+
+    CATEGORY = "private/image"
+
+    def engrave(self, image: torch.Tensor, value):
+        # Convert to [B,C,H,W]
+        image = image.permute(0, 3, 1, 2)
+
+        # Convert value to text, keep 1st line only
+        text = str(value).split("\n", 1)[0]
+
+        # Scale things according to the image height
+        text_height = image.shape[2] * 0.05
+        text_pad = image.shape[2] * 0.025
+        font = PIL.ImageFont.truetype(
+            BASE_PATH / "calibrib.ttf", text_height
+        )  # TODO font
+
+        # Empty image of same size, #ffffff
+        overlay = PIL.Image.new(
+            "RGB", (image.shape[3], image.shape[2]), (255, 255, 255)
+        )
+        draw = PIL.ImageDraw.Draw(overlay)
+
+        # Determine text size
+        text_size = draw.textbbox((0, 0), text, font=font)[2:]
+
+        # Write text
+        draw.text(
+            (
+                overlay.size[0] - text_size[0] - text_pad,
+                overlay.size[1] - text_size[1] - text_pad,
+            ),
+            text,
+            font=font,
+            fill=(0, 0, 0),
+        )
+
+        # To tensor
+        alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
+
+        # Extract one of the channels (red) from the overlay
+        # NB Preserve # of dimensions ("None")
+        alpha = alpha[0, None, :, :]
+
+        results = []
+        for single_image in image:
+            # It becomes the original image's alpha channel.
+            # (Discarding any previous alpha channel)
+            new_image = torch.cat((single_image[:3, :, :], alpha), dim=0)
+            results.append(new_image)
+
+        # Back to a batched image
+        result = torch.stack(results)
+        # Back to [B,H,W,C]
+        result = result.permute(0, 2, 3, 1)
+
+        return (result,)
 
 
 class ValueSubstitution:
@@ -440,7 +531,8 @@ class CLIPDistance:
 
 
 NODE_CLASS_MAPPINGS = {
-    "ValueSubstitution": ValueSubstitution,
+    "ImageAlphaText": ImageAlphaText,
+    # "ValueSubstitution": ValueSubstitution,
     "ImageRouter": ImageRouter,
     "RandomCombo2": RandomCombo,
     "MaskBlur": MaskBlur,

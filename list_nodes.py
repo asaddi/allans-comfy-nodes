@@ -4,6 +4,41 @@ from random import Random
 import torch
 
 
+class ListCounter:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "input": ("*",),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+            },
+        }
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, input_types):
+        return True
+
+    TITLE = "List Counter"
+
+    INPUT_IS_LIST = True
+
+    RETURN_TYPES = ()
+    OUTPUT_NODE = True
+
+    FUNCTION = "count"
+
+    CATEGORY = "private/list"
+
+    def count(self, input, unique_id: list[str]):
+        unique_id: str = unique_id[0]
+
+        c = len(input)
+        print(f"ListCounter #{unique_id} = {c}")
+        return {"ui": {"count": (c,)}}
+
+
 class FloatList:
     @classmethod
     def INPUT_TYPES(cls):
@@ -207,6 +242,7 @@ class SeedList:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ListCounter": ListCounter,
     "FloatList": FloatList,
     "ImageList": ImageList,
     "LatentList": LatentList,

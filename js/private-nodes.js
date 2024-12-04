@@ -132,6 +132,12 @@ app.registerExtension({
 			});
 			widthWidget.disabled = true;
 			heightWidget.disabled = true;
+		} else if (node?.comfyClass === "ListCounter") {
+			const countWidget = node.addWidget("number", "length", 0, () => {}, {
+				precision: 0,
+				serialize: false,
+			});
+			countWidget.disabled = true;
 		}
 	},
 
@@ -171,6 +177,10 @@ app.registerExtension({
 				const valueWidget = node.widgets.find((w) => w.name === "value");
 				const values = event.detail.output.value;
 				valueWidget.value = values[values.length - 1];
+			} else if (node?.comfyClass === "ListCounter") {
+				const countWidget = node.widgets.find((w) => w.name === "length");
+				const counts = event.detail.output.count;
+				countWidget.value = counts[counts.length - 1];
 			}
 		});
 	},

@@ -722,7 +722,9 @@ class ResolutionChooser:
                         "2:3",
                         "3:4",
                         "4:5",
+                        "16:9",
                         "16:10",
+                        "20:37",
                     ],
                 ),
                 "orientation": (
@@ -771,16 +773,32 @@ class ResolutionChooser:
 
         # ...so width is never longer than height
 
+        target_ratio = ratio[1] / ratio[0]
+
         scale = pixel_count / (ratio[0] * ratio[1] * pixel_step * pixel_step)
         scale = math.sqrt(scale)
 
-        # round up on longest dimension
-        height = ResolutionChooser._round(
-            ratio[1] * scale * pixel_step, pixel_step, up=True
-        )
-        width = pixel_count // height
-        # round down on the other
-        width = ResolutionChooser._round(width, pixel_step, up=False)
+        # Explore all rounding combinations and choose closest to
+        # target_ratio
+        res_list = []
+        for height_round, width_round in [
+            (False, False),
+            (True, False),
+            (False, True),
+            (True, True),
+        ]:
+            height = ResolutionChooser._round(
+                ratio[1] * scale * pixel_step, pixel_step, up=height_round
+            )
+            width = pixel_count // height
+            width = ResolutionChooser._round(width, pixel_step, up=width_round)
+
+            res_list.append((height, width, abs(target_ratio - height / width)))
+
+        # Find closest to target ratio
+        res_list.sort(key=lambda x: x[2])
+
+        height, width = res_list[0][:2]
 
         # Switch to desired orientation
         if orientation == Orientation.LANDSCAPE:

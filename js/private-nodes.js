@@ -75,6 +75,13 @@ app.registerExtension({
 			);
 			randomWidget.label = "🎲always randomize";
 
+			randomWidget.beforeQueued = () => {
+				if (node.properties.randomizeSeed) {
+					newSeed();
+					randomWidget.callback(randomWidget.value);
+				}
+			};
+
 			const fixedWidget = node.addWidget(
 				"button",
 				"fixed",
@@ -158,13 +165,6 @@ app.registerExtension({
 				histWidget.value = values[values.length - 1];
 				histWidget.label = `♻️${histWidget.value}`;
 				histWidget.disabled = false;
-
-				const seedWidget = node.widgets.find((w) => w.name === "seed_value");
-				if (node.properties.randomizeSeed) {
-					seedWidget.value = Math.floor(
-						Math.random() * Number.MAX_SAFE_INTEGER,
-					);
-				}
 			} else if (node?.comfyClass === "ImageDimensions" || node?.comfyClass === "ResolutionChooser") {
 				const widthWidget = node.widgets.find((w) => w.name === "width");
 				const heightWidget = node.widgets.find((w) => w.name === "height");

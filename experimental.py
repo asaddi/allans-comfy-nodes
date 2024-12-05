@@ -172,13 +172,32 @@ class ImageAlphaText:
         # TODO Check image's type
         return True
 
-    TITLE = "Image Alpha Text"
+    TITLE = "Write Text (Alpha)"
 
     RETURN_TYPES = ("IMAGE",)
 
     FUNCTION = "engrave"
 
     CATEGORY = "private/image"
+
+    def _overlay_onto_image(
+        self, image: torch.Tensor, overlay: PIL.Image.Image
+    ) -> list[torch.Tensor]:
+        # To tensor
+        alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
+
+        # Extract one of the channels (red) from the overlay
+        # NB Preserve # of dimensions ("None")
+        alpha = alpha[0, None, :, :]
+
+        results = []
+        for single_image in image:
+            # It becomes the original image's alpha channel.
+            # (Discarding any previous alpha channel)
+            new_image = torch.cat((single_image[:3, :, :], alpha), dim=0)
+            results.append(new_image)
+
+        return results
 
     def engrave(self, image: torch.Tensor, value):
         # Convert to [B,C,H,W]
@@ -194,10 +213,13 @@ class ImageAlphaText:
             BASE_PATH / "calibrib.ttf", text_height
         )  # TODO font
 
-        # Empty image of same size, #ffffff
-        overlay = PIL.Image.new(
-            "RGB", (image.shape[3], image.shape[2]), (255, 255, 255)
-        )
+        # Since we're dealing with the alpha channel, make initial overlay
+        # fully transparent, #ffffff
+        overlay_color = (255, 255, 255)
+        text_color = (0, 0, 0)
+
+        # Empty image of same size
+        overlay = PIL.Image.new("RGB", (image.shape[3], image.shape[2]), overlay_color)
         draw = PIL.ImageDraw.Draw(overlay)
 
         # Determine text size
@@ -211,22 +233,10 @@ class ImageAlphaText:
             ),
             text,
             font=font,
-            fill=(0, 0, 0),
+            fill=text_color,
         )
 
-        # To tensor
-        alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
-
-        # Extract one of the channels (red) from the overlay
-        # NB Preserve # of dimensions ("None")
-        alpha = alpha[0, None, :, :]
-
-        results = []
-        for single_image in image:
-            # It becomes the original image's alpha channel.
-            # (Discarding any previous alpha channel)
-            new_image = torch.cat((single_image[:3, :, :], alpha), dim=0)
-            results.append(new_image)
+        results = self._overlay_onto_image(image, overlay)
 
         # Back to a batched image
         result = torch.stack(results)

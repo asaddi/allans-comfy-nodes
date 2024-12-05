@@ -151,7 +151,7 @@ class MakeImageGrid:
         return (output_images,)
 
 
-class ImageAlphaText:
+class WriteTextImage:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -163,6 +163,7 @@ class ImageAlphaText:
                         "forceInput": True,
                     },
                 ),
+                "write_to": (["alpha", "image"],),
                 # Corner too, but for now we'll just force bottom-right.
             },
         }
@@ -172,7 +173,7 @@ class ImageAlphaText:
         # TODO Check image's type
         return True
 
-    TITLE = "Write Text (Alpha)"
+    TITLE = "Write Text to Image"
 
     RETURN_TYPES = ("IMAGE",)
 
@@ -180,9 +181,13 @@ class ImageAlphaText:
 
     CATEGORY = "private/image"
 
-    def _overlay_onto_image(
+    def _overlay_alpha(
         self, image: torch.Tensor, overlay: PIL.Image.Image
-    ) -> list[torch.Tensor]:
+    ) -> torch.Tensor:
+        """
+        Convert the overlay to a mask and use it to replace the alpha
+        channel of all images.
+        """
         # To tensor
         alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
 
@@ -197,9 +202,36 @@ class ImageAlphaText:
             new_image = torch.cat((single_image[:3, :, :], alpha), dim=0)
             results.append(new_image)
 
-        return results
+        # Back to a batched image
+        return torch.stack(results)
 
-    def engrave(self, image: torch.Tensor, value):
+    def _overlay_direct(
+        self, image: torch.Tensor, overlay: PIL.Image.Image
+    ) -> list[torch.Tensor]:
+        """
+        Convert the overlay to a mask and use it to composite a solid color
+        onto all images.
+        """
+        # To tensor
+        alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
+        alpha = alpha.unsqueeze(0)  # And now [B,3,H,W]
+
+        # Create an "image" of the same dimensions made up of a solid color
+        # Remember, we're float32 now
+        overlay_color = torch.tensor(
+            [0xCC / 255.0, 0xFF / 255.0, 0], dtype=torch.float32
+        )
+        overlay_image = (
+            overlay_color.tile(image.shape[2], image.shape[3], 1)
+            .permute(2, 0, 1)
+            .unsqueeze(0)
+        )
+
+        # FIXME We'll discard original alpha channel for now
+        image = image[:, :3, :, :] * alpha + overlay_image * (1.0 - alpha)
+        return image
+
+    def engrave(self, image: torch.Tensor, value, write_to: str):
         # Convert to [B,C,H,W]
         image = image.permute(0, 3, 1, 2)
 
@@ -236,10 +268,13 @@ class ImageAlphaText:
             fill=text_color,
         )
 
-        results = self._overlay_onto_image(image, overlay)
+        if write_to == "alpha":
+            result = self._overlay_alpha(image, overlay)
+        elif write_to == "image":
+            result = self._overlay_direct(image, overlay)
+        else:
+            raise ValueError(f"Unhandled write_to: {write_to}")
 
-        # Back to a batched image
-        result = torch.stack(results)
         # Back to [B,H,W,C]
         result = result.permute(0, 2, 3, 1)
 
@@ -678,7 +713,7 @@ class CLIPDistance:
 
 NODE_CLASS_MAPPINGS = {
     "MakeImageGrid": MakeImageGrid,
-    "ImageAlphaText": ImageAlphaText,
+    "WriteTextImage": WriteTextImage,
     # "ValueSubstitution": ValueSubstitution,
     "ImageRouter": ImageRouter,
     "RandomCombo2": RandomCombo,

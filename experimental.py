@@ -191,19 +191,15 @@ class WriteTextImage:
         # To tensor
         alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
 
-        # Extract one of the channels (red) from the overlay
-        # NB Preserve # of dimensions ("None")
-        alpha = alpha[0, None, :, :]
+        # Extract alpha channel from overlay
+        # And make a batch of 1
+        alpha = alpha[None, -1, None, :, :]
 
-        results = []
-        for single_image in image:
-            # It becomes the original image's alpha channel.
-            # (Discarding any previous alpha channel)
-            new_image = torch.cat((single_image[:3, :, :], alpha), dim=0)
-            results.append(new_image)
-
-        # Back to a batched image
-        return torch.stack(results)
+        # It becomes the original image's alpha channel.
+        # (Discarding any previous alpha channel)
+        alpha = alpha.expand(image.shape[0], -1, -1, -1)
+        image = torch.cat((image[:, :3, :, :], alpha), dim=1)
+        return image
 
     def _overlay_direct(
         self, image: torch.Tensor, overlay: PIL.Image.Image
@@ -213,22 +209,27 @@ class WriteTextImage:
         onto all images.
         """
         # To tensor
-        alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
-        alpha = alpha.unsqueeze(0)  # And now [B,3,H,W]
+        alpha = TVF.to_tensor(overlay)  # Should be [4,H,W]
+        overlay_image = alpha.unsqueeze(0)
 
-        # Create an "image" of the same dimensions made up of a solid color
-        # Remember, we're float32 now
-        overlay_color = torch.tensor(
-            [0xCC / 255.0, 0xFF / 255.0, 0], dtype=torch.float32
-        )
-        overlay_image = (
-            overlay_color.tile(image.shape[2], image.shape[3], 1)
-            .permute(2, 0, 1)
-            .unsqueeze(0)
-        )
+        # Extract alpha channel from overlay
+        # And make a batch of 1
+        alpha = overlay_image[:, -1, None, :, :]
+        overlay_image = overlay_image[:, :3, :, :]
 
-        # FIXME We'll discard original alpha channel for now
-        image = image[:, :3, :, :] * alpha + overlay_image * (1.0 - alpha)
+        orig_alpha = None
+        if image.shape[1] == 4:
+            # Preserve original alpha and trim down to RGB
+            orig_alpha = image[:, -1, None, :, :]
+            image = image[:, :3, :, :]
+
+        # Composite overlay over image
+        image = image * alpha + overlay_image * (1.0 - alpha)
+
+        # Restore original alpha, if needed
+        if orig_alpha is not None:
+            image = torch.cat((image, orig_alpha), dim=1)
+
         return image
 
     def engrave(self, image: torch.Tensor, value, write_to: str):
@@ -246,12 +247,12 @@ class WriteTextImage:
         )  # TODO font
 
         # Since we're dealing with the alpha channel, make initial overlay
-        # fully transparent, #ffffff
-        overlay_color = (255, 255, 255)
-        text_color = (0, 0, 0)
+        # fully transparent
+        overlay_color = (0, 0, 0, 255)
+        text_color = (0xCC, 0xFF, 0, 0)
 
         # Empty image of same size
-        overlay = PIL.Image.new("RGB", (image.shape[3], image.shape[2]), overlay_color)
+        overlay = PIL.Image.new("RGBA", (image.shape[3], image.shape[2]), overlay_color)
         draw = PIL.ImageDraw.Draw(overlay)
 
         # Determine text size

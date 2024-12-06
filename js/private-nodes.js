@@ -113,9 +113,9 @@ app.registerExtension({
 
 			const makeBadge = () => {
 				return new LGraphBadge({
-					text: node.properties.randomizeSeed ? "🎲" : "🔒"
+					text: node.properties.randomizeSeed ? "🎲" : "🔒",
 				});
-			}
+			};
 			node.badges.push(makeBadge);
 		} else if (node?.comfyClass === "PresetText") {
 			// The moment we add a 3rd widget, the text box gets compressed.
@@ -172,7 +172,10 @@ app.registerExtension({
 				histWidget.value = values[values.length - 1];
 				histWidget.label = `♻️${histWidget.value}`;
 				histWidget.disabled = false;
-			} else if (node?.comfyClass === "ImageDimensions" || node?.comfyClass === "ResolutionChooser") {
+			} else if (
+				node?.comfyClass === "ImageDimensions" ||
+				node?.comfyClass === "ResolutionChooser"
+			) {
 				const widthWidget = node.widgets.find((w) => w.name === "width");
 				const heightWidget = node.widgets.find((w) => w.name === "height");
 
@@ -180,7 +183,10 @@ app.registerExtension({
 				const [width, height] = values[values.length - 1];
 				widthWidget.value = width;
 				heightWidget.value = height;
-			} else if (node?.comfyClass === "IntegerLatch" || node?.comfyClass === "FloatLatch") {
+			} else if (
+				node?.comfyClass === "IntegerLatch" ||
+				node?.comfyClass === "FloatLatch"
+			) {
 				const valueWidget = node.widgets.find((w) => w.name === "value");
 				const values = event.detail.output.value;
 				valueWidget.value = values[values.length - 1];

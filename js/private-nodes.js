@@ -75,7 +75,7 @@ app.registerExtension({
 			);
 			randomWidget.label = "🎲always randomize";
 
-			randomWidget.beforeQueued = () => {
+			randomWidget.afterQueued = () => {
 				if (node.properties.randomizeSeed) {
 					newSeed();
 					randomWidget.callback(randomWidget.value);

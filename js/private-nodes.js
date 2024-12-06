@@ -94,7 +94,7 @@ app.registerExtension({
 					serialize: false,
 				},
 			);
-			fixedWidget.label = "🎲new fixed seed";
+			fixedWidget.label = "🔒new fixed seed";
 
 			const histWidget = node.addWidget(
 				"button",
@@ -110,6 +110,13 @@ app.registerExtension({
 			);
 			histWidget.label = "♻️previous seed";
 			histWidget.disabled = true;
+
+			const makeBadge = () => {
+				return new LGraphBadge({
+					text: node.properties.randomizeSeed ? "🎲" : "🔒"
+				});
+			}
+			node.badges.push(makeBadge);
 		} else if (node?.comfyClass === "PresetText") {
 			// The moment we add a 3rd widget, the text box gets compressed.
 			// Preserve the original size.

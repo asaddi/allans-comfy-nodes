@@ -10,6 +10,113 @@ from comfy_execution.graph_utils import GraphBuilder
 import folder_paths
 
 
+class VersatileTextEncode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "clip": (
+                    "CLIP",
+                    {"tooltip": "The CLIP model used for encoding the text."},
+                ),
+                "pos_text": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "forceInput": True,
+                    },
+                ),
+                "neg_text": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "forceInput": True,
+                    },
+                ),
+                "zero_out_start": (
+                    "FLOAT",
+                    {
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.001,
+                        "default": 1.0,
+                    },
+                ),
+            },
+            "optional": {
+                "pre_text": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "forceInput": True,
+                    },
+                ),
+            },
+        }
+
+    TITLE = "Versatile Text Encode"
+
+    RETURN_TYPES = ("CONDITIONING", "CONDITIONING")
+    RETURN_NAMES = ("positive", "negative")
+
+    FUNCTION = "expand"
+
+    CATEGORY = "private/conditioning"
+
+    def expand(
+        self,
+        clip,
+        pos_text: str,
+        neg_text: str,
+        zero_out_start: float,
+        pre_text: str | None = None,
+    ):
+        graph = GraphBuilder()
+
+        # Positive prompt handling
+        pos_enc = graph.node("CLIPTextEncode", text=pos_text, clip=clip)
+        pos_out = pos_enc.out(0)
+        if pre_text:
+            # Encode the prelude and pass through a ConditioningConcat
+            pre_enc = graph.node("CLIPTextEncode", text=pre_text, clip=clip)
+            concat = graph.node(
+                "ConditioningConcat",
+                conditioning_to=pre_enc.out(0),
+                conditioning_from=pos_out,
+            )
+            pos_out = concat.out(0)
+
+        # Negative prompt handling
+        neg_enc = graph.node("CLIPTextEncode", text=neg_text, clip=clip)
+        neg_out = neg_enc.out(0)
+        if zero_out_start < 1.0:
+            # Negative condition is fleeting. It zeros out after some time.
+            zero = graph.node("ConditioningZeroOut", conditioning=neg_out)
+            zero_range = graph.node(
+                "ConditioningSetTimestepRange",
+                conditioning=zero.out(0),
+                start=zero_out_start,
+                end=1.0,
+            )
+            neg_range = graph.node(
+                "ConditioningSetTimestepRange",
+                conditioning=neg_out,
+                start=0.0,
+                end=zero_out_start,
+            )
+            combine = graph.node(
+                "ConditioningCombine",
+                conditioning_1=zero_range.out(0),
+                conditioning_2=neg_range.out(0),
+            )
+            neg_out = combine.out(0)
+
+        return {
+            "result": (pos_out, neg_out),
+            "expand": graph.finalize(),
+        }
+
+
 class EmptyLatentImageSelector:
     # Note: This is from ComfyUI's nodes.py, but I don't want to import it.
     MAX_RESOLUTION = 16384
@@ -822,6 +929,7 @@ class ResolutionChooser:
 
 
 NODE_CLASS_MAPPINGS = {
+    "VersatileTextEncode": VersatileTextEncode,
     "EmptyLatentImageSelector": EmptyLatentImageSelector,
     "ImageDimensions": ImageDimensions,
     "PrivateLoraStack": PrivateLoraStack,

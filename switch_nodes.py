@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 import torch
 
 from .utils import PromptUtils

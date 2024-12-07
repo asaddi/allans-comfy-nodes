@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from itertools import zip_longest
 from random import Random
 

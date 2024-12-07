@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from enum import Enum, auto
 import math
 

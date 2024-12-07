@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from pathlib import Path
 import matplotlib as mpl
 import torch

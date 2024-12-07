@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 import itertools
 from pathlib import Path
 from pprint import pprint

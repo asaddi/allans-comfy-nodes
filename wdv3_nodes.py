@@ -1,3 +1,5 @@
+# Much of this generously lifted from https://github.com/neggles/wdv3-timm @ 2f49e85e
+# No license?!
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,9 +20,6 @@ import torchvision.transforms.functional
 
 from comfy.model_management import get_torch_device, unet_offload_device
 
-
-# Much of this generously lifted from https://github.com/neggles/wdv3-timm @ 2f49e85e
-# No license?!
 
 MODEL_REPO_MAP = OrderedDict(
     [

@@ -1,3 +1,4 @@
+// Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 app.registerExtension({

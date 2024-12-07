@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from pathlib import Path
 
 from huggingface_hub import snapshot_download

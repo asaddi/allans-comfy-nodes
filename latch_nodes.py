@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from .utils import PromptUtils, WorkflowUtils
 
 

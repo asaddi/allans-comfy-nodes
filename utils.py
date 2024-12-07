@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 class PromptUtils:
     def __init__(self, prompt):
         self.prompt = prompt

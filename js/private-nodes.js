@@ -33,22 +33,19 @@ app.registerExtension({
 			const divWidget = node.widgets.find((w) => w.name === "divisor");
 			divWidget.label = "multiple";
 
-			const widthWidget = node.addWidget("number", "width", 0, () => {}, {
-				precision: 0,
-				serialize: false,
-			});
-			const heightWidget = node.addWidget("number", "height", 0, () => {}, {
-				precision: 0,
-				serialize: false,
-			});
-			widthWidget.disabled = true;
-			heightWidget.disabled = true;
+			const makeBadge = () => {
+				return new LGraphBadge({
+					text: `${node.properties.width ?? "?"}\u00d7${node.properties.height ?? "?"}`
+				});
+			}
+			node.badges.push(makeBadge);
 		} else if (node?.comfyClass === "LPIPSRun") {
-			const lossWidget = node.addWidget("number", "image_loss", 0, () => {}, {
-				precision: 6,
-				serialize: false,
-			});
-			lossWidget.disabled = true;
+			const makeBadge = () => {
+				return new LGraphBadge({
+					text: `loss: ${node.properties?.loss?.toFixed(6) ?? "?"}`
+				});
+			}
+			node.badges.push(makeBadge);
 		} else if (node?.comfyClass === "PrivateSeed") {
 			node.properties.randomizeSeed = true;
 
@@ -137,22 +134,19 @@ app.registerExtension({
 			node.setSize(sz);
 			node.setDirtyCanvas(true, true);
 		} else if (node?.comfyClass === "ImageDimensions") {
-			const widthWidget = node.addWidget("number", "width", 0, () => {}, {
-				precision: 0,
-				serialize: false,
-			});
-			const heightWidget = node.addWidget("number", "height", 0, () => {}, {
-				precision: 0,
-				serialize: false,
-			});
-			widthWidget.disabled = true;
-			heightWidget.disabled = true;
+			const makeBadge = () => {
+				return new LGraphBadge({
+					text: `${node.properties.width ?? "?"}\u00d7${node.properties.height ?? "?"}`
+				});
+			}
+			node.badges.push(makeBadge);
 		} else if (node?.comfyClass === "ListCounter") {
-			const countWidget = node.addWidget("number", "length", 0, () => {}, {
-				precision: 0,
-				serialize: false,
-			});
-			countWidget.disabled = true;
+			const makeBadge = () => {
+				return new LGraphBadge({
+					text: `count: ${node.properties.count ?? "?"}`
+				});
+			}
+			node.badges.push(makeBadge);
 		}
 	},
 
@@ -160,12 +154,8 @@ app.registerExtension({
 		api.addEventListener("executed", (event) => {
 			const node = app.graph.getNodeById(event.detail.node);
 			if (node?.comfyClass === "LPIPSRun") {
-				const lossWidget = node.widgets.find(
-					(widget) => widget.name === "image_loss",
-				);
 				const image_losses = event.detail.output.image_loss;
-				lossWidget.value = image_losses[image_losses.length - 1];
-				app.graph.setDirtyCanvas(true, false);
+				node.properties.loss = image_losses[image_losses.length - 1];
 			} else if (node?.comfyClass === "PrivateSeed") {
 				const histWidget = node.widgets.find((w) => w.name === "previous");
 
@@ -177,13 +167,10 @@ app.registerExtension({
 				node?.comfyClass === "ImageDimensions" ||
 				node?.comfyClass === "ResolutionChooser"
 			) {
-				const widthWidget = node.widgets.find((w) => w.name === "width");
-				const heightWidget = node.widgets.find((w) => w.name === "height");
-
 				const values = event.detail.output.dims;
 				const [width, height] = values[values.length - 1];
-				widthWidget.value = width;
-				heightWidget.value = height;
+				node.properties.width = width;
+				node.properties.height = height;
 			} else if (
 				node?.comfyClass === "IntegerLatch" ||
 				node?.comfyClass === "FloatLatch"
@@ -192,9 +179,8 @@ app.registerExtension({
 				const values = event.detail.output.value;
 				valueWidget.value = values[values.length - 1];
 			} else if (node?.comfyClass === "ListCounter") {
-				const countWidget = node.widgets.find((w) => w.name === "length");
 				const counts = event.detail.output.count;
-				countWidget.value = counts[counts.length - 1];
+				node.properties.count = counts[counts.length - 1];
 			}
 		});
 	},

@@ -22,6 +22,17 @@ app.registerExtension({
 					});
 				}
 			};
+		} else if (nodeType.comfyClass === "FloatListStepSize") {
+			nodeType.prototype.updateStepCount = function () {
+				const startWidget = this.widgets.find((w) => w.name === "start");
+				const endWidget = this.widgets.find((w) => w.name === "end");
+				const sizeWidget = this.widgets.find((w) => w.name === "step_size");
+
+				if (sizeWidget.value != 0) {
+					const steps = Math.abs(endWidget.value - startWidget.value) / Math.abs(sizeWidget.value);
+					this.calculated_steps = Math.ceil(steps) + 1;  // start & end guaranteed
+				}
+			}
 		}
 	},
 
@@ -144,6 +155,35 @@ app.registerExtension({
 			const makeBadge = () => {
 				return new LGraphBadge({
 					text: `count: ${node.properties.count ?? "?"}`
+				});
+			}
+			node.badges.push(makeBadge);
+		} else if (node?.comfyClass === "FloatListStepSize") {
+			const startWidget = node.widgets.find((w) => w.name === "start");
+			const endWidget = node.widgets.find((w) => w.name === "end");
+			const sizeWidget = node.widgets.find((w) => w.name === "step_size");
+
+			const startWidget_callback = startWidget.callback;
+			startWidget.callback = function (...args) {
+				node.updateStepCount();
+				return startWidget_callback?.apply(this, args);
+			}
+
+			const endWidget_callback = endWidget.callback;
+			endWidget.callback = function (...args) {
+				node.updateStepCount();
+				return endWidget_callback?.apply(this, args);
+			}
+
+			const sizeWidget_callback = sizeWidget.callback;
+			sizeWidget.callback = function (...args) {
+				node.updateStepCount();
+				return sizeWidget_callback?.apply(this, args);
+			}
+
+			const makeBadge = () => {
+				return new LGraphBadge({
+					text: `steps: ${node.calculated_steps ?? "?"}`
 				});
 			}
 			node.badges.push(makeBadge);

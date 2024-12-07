@@ -1,8 +1,70 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from itertools import zip_longest
+import math
 from random import Random
 
 import torch
+
+
+class FloatListStepSize:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "start": (
+                    "FLOAT",
+                    {
+                        "default": 1.0,
+                    },
+                ),
+                "end": (
+                    "FLOAT",
+                    {
+                        "default": 0.1,
+                    },
+                ),
+                "step_size": (
+                    "FLOAT",
+                    {
+                        "default": 0.1,
+                    },
+                ),
+            }
+        }
+
+    TITLE = "Float List (step size)"
+
+    RETURN_TYPES = ("FLOAT",)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "run"
+
+    CATEGORY = "private/list"
+
+    def run(self, start, end, step_size):
+        # Ensure sanity
+        step_size = math.copysign(step_size, end - start)
+        if math.isclose(step_size, 0.0):
+            raise ValueError("step_size cannot be zero")
+
+        result = []
+        current = start
+        i = 0
+        while True:
+            if step_size < 0.0:
+                if current <= end: break
+            else:
+                if current >= end: break
+
+            result.append(round(current, 3))
+            # Feels saner to do it this way
+            i += 1
+            current = start + i * step_size
+
+        # And the final step
+        result.append(end)
+
+        return (result,)
 
 
 class ListCounter:
@@ -245,6 +307,7 @@ class SeedList:
 NODE_CLASS_MAPPINGS = {
     "ListCounter": ListCounter,
     "FloatList": FloatList,
+    "FloatListStepSize": FloatListStepSize,
     "ImageList": ImageList,
     "LatentList": LatentList,
     "SeedList": SeedList,

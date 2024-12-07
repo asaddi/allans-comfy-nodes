@@ -46,7 +46,7 @@ app.registerExtension({
 
 			const makeBadge = () => {
 				return new LGraphBadge({
-					text: `${node.properties.width ?? "?"}\u00d7${node.properties.height ?? "?"}`
+					text: `${node.calculated_width ?? "?"}\u00d7${node.calculated_height ?? "?"}`
 				});
 			}
 			node.badges.push(makeBadge);
@@ -147,14 +147,14 @@ app.registerExtension({
 		} else if (node?.comfyClass === "ImageDimensions") {
 			const makeBadge = () => {
 				return new LGraphBadge({
-					text: `${node.properties.width ?? "?"}\u00d7${node.properties.height ?? "?"}`
+					text: `${node.calculated_width ?? "?"}\u00d7${node.calculated_height ?? "?"}`
 				});
 			}
 			node.badges.push(makeBadge);
 		} else if (node?.comfyClass === "ListCounter") {
 			const makeBadge = () => {
 				return new LGraphBadge({
-					text: `count: ${node.properties.count ?? "?"}`
+					text: `count: ${node.element_count ?? "?"}`
 				});
 			}
 			node.badges.push(makeBadge);
@@ -209,8 +209,8 @@ app.registerExtension({
 			) {
 				const values = event.detail.output.dims;
 				const [width, height] = values[values.length - 1];
-				node.properties.width = width;
-				node.properties.height = height;
+				node.calculated_width = width;
+				node.calculated_height = height;
 			} else if (
 				node?.comfyClass === "IntegerLatch" ||
 				node?.comfyClass === "FloatLatch"
@@ -220,7 +220,7 @@ app.registerExtension({
 				valueWidget.value = values[values.length - 1];
 			} else if (node?.comfyClass === "ListCounter") {
 				const counts = event.detail.output.count;
-				node.properties.count = counts[counts.length - 1];
+				node.element_count = counts[counts.length - 1];
 			}
 		});
 	},

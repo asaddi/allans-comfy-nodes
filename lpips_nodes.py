@@ -3,6 +3,8 @@ import lpips
 import matplotlib as mpl
 import torch
 
+from .utils import WorkflowUtils
+
 from comfy.model_management import get_torch_device, unet_offload_device
 
 
@@ -64,6 +66,10 @@ class LPIPSRun:
                     },
                 ),
             },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
         }
 
     TITLE = "LPIPS Image Compare"
@@ -83,6 +89,8 @@ class LPIPSRun:
         image: torch.Tensor,
         relative: bool,
         grayscale: bool,
+        unique_id: str,
+        extra_pnginfo: dict,
     ):
         torch_device = get_torch_device()
         offload_device = unet_offload_device()
@@ -131,7 +139,10 @@ class LPIPSRun:
 
         # It should now be [B,H,W,C] (C=3)
 
-        # TODO include image_loss in outputs?
+        # Also ensure outgoing metadata has record of image_loss
+        wfu = WorkflowUtils(extra_pnginfo)
+        wfu.set_property(unique_id, "loss", image_loss)
+
         return {
             "ui": {"image_loss": (image_loss,)},
             "result": (spatial_map, image_loss),

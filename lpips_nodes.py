@@ -68,7 +68,8 @@ class LPIPSRun:
 
     TITLE = "LPIPS Image Compare"
 
-    RETURN_TYPES = ("IMAGE",)
+    RETURN_TYPES = ("IMAGE", "FLOAT")
+    RETURN_NAMES = ("IMAGE", "loss")
     OUTPUT_NODE = True
 
     FUNCTION = "calculate"
@@ -131,7 +132,10 @@ class LPIPSRun:
         # It should now be [B,H,W,C] (C=3)
 
         # TODO include image_loss in outputs?
-        return {"ui": {"image_loss": (image_loss,)}, "result": (spatial_map,)}
+        return {
+            "ui": {"image_loss": (image_loss,)},
+            "result": (spatial_map, image_loss),
+        }
 
 
 NODE_CLASS_MAPPINGS = {

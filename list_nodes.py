@@ -52,9 +52,11 @@ class FloatListStepSize:
         i = 0
         while True:
             if step_size < 0.0:
-                if current <= end: break
+                if current <= end:
+                    break
             else:
-                if current >= end: break
+                if current >= end:
+                    break
 
             result.append(round(current, 3))
             # Feels saner to do it this way

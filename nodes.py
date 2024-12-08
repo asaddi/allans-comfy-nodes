@@ -299,53 +299,6 @@ class PrivateLoraStack:
         }
 
 
-class StyleModelApplyStrength:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "conditioning": ("CONDITIONING",),
-                "style_model": ("STYLE_MODEL",),
-                "clip_vision_output": ("CLIP_VISION_OUTPUT",),
-                "strength": (
-                    "FLOAT",
-                    {
-                        "min": 0.0,
-                        "max": 1.0,
-                        "step": 0.01,
-                        "default": 1.0,
-                    },
-                ),
-            }
-        }
-
-    TITLE = "Apply Style Model with Strength"
-
-    RETURN_TYPES = ("CONDITIONING",)
-    FUNCTION = "expand"
-
-    CATEGORY = "private/conditioning"
-
-    def expand(self, conditioning, style_model, clip_vision_output, strength):
-        graph = GraphBuilder()
-        apply_style_model_node = graph.node(
-            "StyleModelApply",
-            conditioning=conditioning,
-            style_model=style_model,
-            clip_vision_output=clip_vision_output,
-        )
-        conditioning_average_node = graph.node(
-            "ConditioningAverage",
-            conditioning_to=apply_style_model_node.out(0),
-            conditioning_from=conditioning,
-            conditioning_to_strength=strength,
-        )
-        return {
-            "result": (conditioning_average_node.out(0),),
-            "expand": graph.finalize(),
-        }
-
-
 # A clean-room low-rent copy of rgthree's seed node.
 class PrivateSeed:
     SEED_MIN = 0
@@ -934,7 +887,6 @@ NODE_CLASS_MAPPINGS = {
     "EmptyLatentImageSelector": EmptyLatentImageSelector,
     "ImageDimensions": ImageDimensions,
     "PrivateLoraStack": PrivateLoraStack,
-    "StyleModelApplyStrength": StyleModelApplyStrength,
     "PrivateSeed": PrivateSeed,
     "SimpleBus": SimpleBus,
     "ControlBus": ControlBus,

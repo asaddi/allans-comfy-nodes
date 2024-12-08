@@ -18,6 +18,119 @@ from comfy_execution.graph_utils import GraphBuilder
 BASE_PATH = Path(__file__).parent.resolve()
 
 
+# Make it look like Noise_EmptyNoise/Noise_RandomNoise
+class Noise_MixedNoise:
+    def __init__(
+        self, noise_base, weight, noise_mix=None, mask: torch.Tensor | None = None
+    ):
+        self.noise_base = noise_base
+        self.weight = weight
+        self.noise_mix = noise_mix
+        self.mask = mask
+
+    # Apparently some samplers read the seed
+    @property
+    def seed(self) -> int:
+        return self.noise_base.seed
+
+    def generate_noise(self, input_latent):
+        base = self.noise_base.generate_noise(input_latent)
+        # If there's nothing else to do, do nothing
+        if self.noise_mix is None or self.weight == 0.0:
+            return base
+
+        mix = self.noise_mix.generate_noise(input_latent)
+
+        if self.mask is not None:
+            # Mask is [B,H,W]. Make it match latent [B,C,H,W]
+            # Note: Take the 1st mask TODO Is this correct?
+            mask: torch.Tensor = self.mask[None, 0, None, :, :]
+            latent_image = input_latent["samples"]
+            # Ensure it's the same [H,W] as latent...
+            mask = F.interpolate(mask, latent_image.shape[-2:], mode="bilinear")
+            # Mask should be [1,1,H,W]
+            # And finally, apply it to the noise being mixed in...
+            mix = mix * mask
+
+        # Mix in second noise according to weight
+        mixed = base + mix * self.weight
+
+        # Since we aren't touching base, I feel like normalization does make
+        # sense now
+
+        # TODO I feel like only masked area should be normalized. But the mask
+        # isn't 1-bit, so it seems like it will be hard to do. Skip for now.
+
+        # Perform Z-score normalization. Thanks, Llama 3.3!
+        new_std, new_mean = torch.std_mean(mixed)
+        normalized = (mixed - new_mean) / new_std
+
+        orig_std, orig_mean = torch.std_mean(base)
+        mixed = normalized * orig_std + orig_mean
+
+        # TODO The whole batch_index thing... do we have to worry?
+        return mixed
+
+
+class MixNoise:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "noise_base": ("NOISE",),
+                "weight": (
+                    "FLOAT",
+                    {
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.001,
+                        "default": 0.0,
+                    },
+                ),
+            },
+            "optional": {
+                "noise_mix": (
+                    "NOISE",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "mask": ("MASK",),
+            },
+        }
+
+    TITLE = "Mix Noise"
+
+    RETURN_TYPES = ("NOISE",)
+
+    FUNCTION = "get_noise"
+
+    CATEGORY = "private/noise"
+
+    def check_lazy_status(
+        self,
+        noise_base,
+        weight: float,
+        noise_mix=None,
+        mask: torch.Tensor | None = None,
+    ):
+        needed = []
+        # Pretty meager savings, but quick to check
+        if weight != 0.0 and noise_mix is None:
+            needed.append("noise_mix")
+        # TODO Check mask too? But we'd have to see if it was connected first...
+        return needed
+
+    def get_noise(
+        self,
+        noise_base,
+        weight: float,
+        noise_mix=None,
+        mask: torch.Tensor | None = None,
+    ):
+        return (Noise_MixedNoise(noise_base, weight, noise_mix=noise_mix, mask=mask),)
+
+
 class MakeImageGrid:
     @classmethod
     def INPUT_TYPES(cls):
@@ -714,6 +827,7 @@ class CLIPDistance:
 
 
 NODE_CLASS_MAPPINGS = {
+    "MixNoise": MixNoise,
     "MakeImageGrid": MakeImageGrid,
     "WriteTextImage": WriteTextImage,
     # "ValueSubstitution": ValueSubstitution,

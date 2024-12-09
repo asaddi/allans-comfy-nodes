@@ -41,32 +41,38 @@ class Noise_MixedNoise:
 
         mix = self.noise_mix.generate_noise(input_latent)
 
+        latent_image = input_latent["samples"]
         if self.mask is not None:
             # Mask is [B,H,W]. Make it match latent [B,C,H,W]
             # Note: Take the 1st mask TODO Is this correct?
             mask: torch.Tensor = self.mask[None, 0, None, :, :]
-            latent_image = input_latent["samples"]
             # Ensure it's the same [H,W] as latent...
             mask = F.interpolate(mask, latent_image.shape[-2:], mode="bilinear")
-            # Mask should be [1,1,H,W]
-            # And finally, apply it to the noise being mixed in...
-            mix = mix * mask
+            # Mask should now be [1,1,H,W]
+        else:
+            mask = torch.ones(
+                1, 1, latent_image.shape[2], latent_image.shape[3], dtype=torch.float32
+            )
+
+        # And finally, apply it to the noise being mixed in...
+        unmasked_base = base * (1.0 - mask)
+        masked_base = base * mask
+        mix = mix * mask
 
         # Mix in second noise according to weight
-        mixed = base + mix * self.weight
+        mixed = masked_base + mix * self.weight
+        # Note: mixed doesn't include anything outside the mask.
+        # That's unmasked_base
 
-        # Since we aren't touching base, I feel like normalization does make
-        # sense now
-
-        # TODO I feel like only masked area should be normalized. But the mask
-        # isn't 1-bit, so it seems like it will be hard to do. Skip for now.
-
-        # Perform Z-score normalization. Thanks, Llama 3.3!
+        # Perform Z-score normalization on masked area. Thanks, Llama 3.3!
         new_std, new_mean = torch.std_mean(mixed)
         normalized = (mixed - new_mean) / new_std
 
-        orig_std, orig_mean = torch.std_mean(base)
+        orig_std, orig_mean = torch.std_mean(masked_base)
         mixed = normalized * orig_std + orig_mean
+
+        # Finally, add in the unmasked area (if any)
+        mixed = unmasked_base + mixed
 
         # TODO The whole batch_index thing... do we have to worry?
         return mixed

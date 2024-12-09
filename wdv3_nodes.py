@@ -204,7 +204,7 @@ class WDv3Model:
 
         print(f"Loading model '{model}' from '{repo_id}'...")
         model: nn.Module = timm.create_model("hf-hub:" + repo_id).eval()
-        state_dict = timm.models.load_state_dict_from_hf(repo_id)
+        state_dict = timm.models.load_state_dict_from_hf(repo_id, weights_only=True)
         model.load_state_dict(state_dict)
 
         print("Loading tag list...")

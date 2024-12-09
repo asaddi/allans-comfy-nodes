@@ -802,6 +802,7 @@ class ResolutionChooser:
                         "8",  # SD1.5
                     ],
                 ),
+                "strict": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -827,6 +828,7 @@ class ResolutionChooser:
         orientation: Orientation,
         pixel_count: int,
         pixel_step: int,
+        strict: bool,
     ):
         # Force portrait
         if ratio[1] < ratio[0]:
@@ -851,10 +853,12 @@ class ResolutionChooser:
             height = ResolutionChooser._round(
                 ratio[1] * scale * pixel_step, pixel_step, up=height_round
             )
-            width = pixel_count // height
-            width = ResolutionChooser._round(width, pixel_step, up=width_round)
+            width = ResolutionChooser._round(
+                ratio[0] * scale * pixel_step, pixel_step, up=width_round
+            )
 
-            res_list.append((height, width, abs(target_ratio - height / width)))
+            if not strict or (height * width) <= pixel_count:
+                res_list.append((height, width, abs(target_ratio - height / width)))
 
         # Find closest to target ratio
         res_list.sort(key=lambda x: x[2])
@@ -867,7 +871,14 @@ class ResolutionChooser:
 
         return width, height
 
-    def calculate(self, ratio: str, orientation: str, megapixels: float, divisor: str):
+    def calculate(
+        self,
+        ratio: str,
+        orientation: str,
+        megapixels: float,
+        divisor: str,
+        strict: bool,
+    ):
         ratio_parts = ratio.split(":", 1)
         ratio_arg = (int(ratio_parts[0]), int(ratio_parts[1]))
 
@@ -876,7 +887,11 @@ class ResolutionChooser:
         megapixels_arg = 1024 * 1024 * megapixels
 
         width, height = ResolutionChooser.find_resolution(
-            ratio_arg, orientation_arg, megapixels_arg, int(divisor)
+            ratio_arg,
+            orientation_arg,
+            megapixels_arg,
+            int(divisor),
+            strict,
         )
 
         return {"ui": {"dims": ([width, height],)}, "result": (width, height)}

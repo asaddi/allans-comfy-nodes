@@ -3,7 +3,7 @@ pandas
 timm
 
 # Used by LPIPSRun
-lpips
+lpips==0.1.4
 matplotlib
 
 # Used by DepthAnythingV2

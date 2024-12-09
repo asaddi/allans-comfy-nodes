@@ -23,6 +23,10 @@ app.registerExtension({
 				}
 			};
 		} else if (nodeType.comfyClass === "FloatListStepSize") {
+			const myRound = (num) => {
+				return Math.round(num * 1000) / 1000;
+			}
+
 			nodeType.prototype.updateStepCount = function () {
 				const startWidget = this.widgets.find((w) => w.name === "start");
 				const endWidget = this.widgets.find((w) => w.name === "end");
@@ -30,7 +34,7 @@ app.registerExtension({
 
 				if (sizeWidget.value != 0) {
 					const steps = Math.abs(endWidget.value - startWidget.value) / Math.abs(sizeWidget.value);
-					this.calculated_steps = Math.ceil(steps) + 1;  // start & end guaranteed
+					this.calculated_steps = Math.ceil(myRound(steps)) + 1;  // start & end guaranteed
 				}
 			}
 		}

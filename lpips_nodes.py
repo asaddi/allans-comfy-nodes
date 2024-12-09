@@ -1,11 +1,19 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
+from unittest.mock import patch
+
 import lpips
 import matplotlib as mpl
 import torch
+from torch import load as torch_load
 
 from .utils import WorkflowUtils
 
 from comfy.model_management import get_torch_device, unet_offload_device
+
+
+def patched_torch_load(*args, **kwargs):
+    kwargs["weights_only"] = True
+    return torch_load(*args, **kwargs)
 
 
 class LPIPSModel:
@@ -26,7 +34,9 @@ class LPIPSModel:
     CATEGORY = "private/lpips"
 
     def load(self, net: str):
-        loss_fn = lpips.LPIPS(net=net, spatial=True)
+        # monkeypatch to force weights_only=True
+        with patch("torch.load", patched_torch_load):
+            loss_fn = lpips.LPIPS(net=net, spatial=True)
 
         return (loss_fn,)
 

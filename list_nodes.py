@@ -6,6 +6,133 @@ from random import Random
 import torch
 
 
+class StringSequenceList:
+    NUM_INPUTS = 2
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "required": {
+                "input0": (
+                    "STRING",
+                    {
+                        "multiline": True,
+                        "forceInput": True,
+                    },
+                ),
+                "amount": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 1,
+                    },
+                ),
+            },
+            "optional": {},
+        }
+
+        # The rest of the inputs are optional
+        for index in range(cls.NUM_INPUTS - 1):
+            d["optional"][f"input{index + 1}"] = (
+                "STRING",
+                {
+                    "multiline": True,
+                    "forceInput": True,
+                },
+            )
+
+        return d
+
+    TITLE = "String Sequence List"
+
+    RETURN_TYPES = ("STRING",)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "repeat"
+
+    CATEGORY = "private/list"
+
+    def repeat(self, input0: str, amount: int, **kwargs):
+        out_list = [input0]
+        for index in range(self.NUM_INPUTS - 1):
+            if (input := kwargs.get(f"input{index + 1}")) is not None:
+                out_list.append(input)
+        return (out_list * amount,)
+
+
+class StringSequenceList5(StringSequenceList):
+    NUM_INPUTS = 5
+    TITLE = "String Sequence List 5"
+
+
+class RepeatIntList:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "input": (
+                    "INT",
+                    {
+                        "forceInput": True,
+                    },
+                ),
+                "amount": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 1,
+                    },
+                ),
+            }
+        }
+
+    TITLE = "Repeat Int List"
+
+    RETURN_TYPES = ("INT",)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "repeat"
+
+    CATEGORY = "private/list"
+
+    def repeat(self, input: int, amount: int):
+        return ([input] * amount,)
+
+
+class RepeatFloatList:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "input": (
+                    "FLOAT",
+                    {
+                        "forceInput": True,
+                    },
+                ),
+                "amount": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 1,
+                    },
+                ),
+            }
+        }
+
+    TITLE = "Repeat Float List"
+
+    RETURN_TYPES = ("FLOAT",)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "repeat"
+
+    CATEGORY = "private/list"
+
+    def repeat(self, input: float, amount: int):
+        return ([input] * amount,)
+
+
 class FloatListStepSize:
     @classmethod
     def INPUT_TYPES(cls):
@@ -307,6 +434,10 @@ class SeedList:
 
 
 NODE_CLASS_MAPPINGS = {
+    "StringSequenceList2": StringSequenceList,
+    "StringSequenceList5": StringSequenceList5,
+    "RepeatFloatList": RepeatFloatList,
+    "RepeatIntList": RepeatIntList,
     "ListCounter": ListCounter,
     "FloatList": FloatList,
     "FloatListStepSize": FloatListStepSize,

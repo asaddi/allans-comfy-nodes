@@ -83,10 +83,18 @@ class RepeatIntList:
                         "default": 1,
                     },
                 ),
+                "repeat": (
+                    [
+                        "consecutively",
+                        "sequence",
+                    ],
+                ),
             }
         }
 
     TITLE = "Repeat Int List"
+
+    INPUT_IS_LIST = True
 
     RETURN_TYPES = ("INT",)
     OUTPUT_IS_LIST = (True,)
@@ -95,8 +103,20 @@ class RepeatIntList:
 
     CATEGORY = "private/list"
 
-    def repeat(self, input: int, amount: int):
-        return ([input] * amount,)
+    def repeat(self, input: list[int], amount: list[int], repeat: list[str]):
+        amount = amount[0]
+        repeat = repeat[0]
+
+        if repeat == "consecutively":
+            # repeat each element before moving on to next
+            result = []
+            for ele in input:
+                result.extend([ele] * amount)
+        else:
+            # repeat entire list
+            result = input * amount
+
+        return (result,)
 
 
 class RepeatFloatList:
@@ -117,10 +137,18 @@ class RepeatFloatList:
                         "default": 1,
                     },
                 ),
+                "repeat": (
+                    [
+                        "consecutively",
+                        "sequence",
+                    ],
+                ),
             }
         }
 
     TITLE = "Repeat Float List"
+
+    INPUT_IS_LIST = True
 
     RETURN_TYPES = ("FLOAT",)
     OUTPUT_IS_LIST = (True,)
@@ -129,8 +157,20 @@ class RepeatFloatList:
 
     CATEGORY = "private/list"
 
-    def repeat(self, input: float, amount: int):
-        return ([input] * amount,)
+    def repeat(self, input: list[float], amount: list[int], repeat: list[str]):
+        amount = amount[0]
+        repeat = repeat[0]
+
+        if repeat == "consecutively":
+            # repeat each element before moving on to next
+            result = []
+            for ele in input:
+                result.extend([ele] * amount)
+        else:
+            # repeat entire list
+            result = input * amount
+
+        return (result,)
 
 
 class FloatListStepSize:

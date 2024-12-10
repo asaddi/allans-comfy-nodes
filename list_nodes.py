@@ -174,21 +174,12 @@ class FloatListStepSize:
         if math.isclose(step_size, 0.0):
             raise ValueError("step_size cannot be zero")
 
-        result = []
-        current = start
-        i = 0
-        while True:
-            if step_size < 0.0:
-                if current <= end:
-                    break
-            else:
-                if current >= end:
-                    break
+        step_count = math.ceil(round((end - start) / step_size, 3))
 
-            result.append(round(current, 3))
+        result = []
+        for i in range(step_count):
             # Feels saner to do it this way
-            i += 1
-            current = start + i * step_size
+            result.append(round(start + i * step_size, 3))
 
         # And the final step
         result.append(end)

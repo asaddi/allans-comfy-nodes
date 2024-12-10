@@ -1,6 +1,7 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
+from decimal import Decimal, localcontext
+import decimal
 from itertools import zip_longest
-import math
 from random import Random
 
 import torch
@@ -169,29 +170,38 @@ class FloatListStepSize:
     CATEGORY = "private/list"
 
     def run(self, start, end, step_size):
-        # Ensure sanity
-        step_size = math.copysign(step_size, end - start)
-        if math.isclose(step_size, 0.0):
-            raise ValueError("step_size cannot be zero")
+        with localcontext(rounding=decimal.ROUND_HALF_UP) as ctx:
+            # Convert all to Decimal
+            start: Decimal = Decimal(str(start))
+            end: Decimal = Decimal(str(end))
+            step_size: Decimal = Decimal(str(step_size))
 
-        result = []
-        current = start
-        i = 0
-        while True:
-            if step_size < 0.0:
-                if current <= end:
-                    break
-            else:
-                if current >= end:
-                    break
+            # Ensure sanity
+            step_size = step_size.copy_sign(end - start)
+            if step_size.is_zero():
+                raise ValueError("step_size cannot be zero")
 
-            result.append(round(current, 3))
-            # Feels saner to do it this way
-            i += 1
-            current = start + i * step_size
+            # All output will be rounded to 3 decimal places
+            quant = Decimal("1.000")
 
-        # And the final step
-        result.append(end)
+            result = []
+            current = start
+            i = 0
+            while True:
+                if step_size < 0.0:
+                    if current <= end:
+                        break
+                else:
+                    if current >= end:
+                        break
+
+                result.append(float(current.quantize(quant)))
+                # Feels saner to do it this way
+                i += 1
+                current = start + i * step_size
+
+            # And the final step
+            result.append(float(end.quantize(quant)))
 
         return (result,)
 

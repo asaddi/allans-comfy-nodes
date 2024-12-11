@@ -17,4 +17,5 @@ I have no plans to distribute and/or advertise this project.
    * https://github.com/neggles/wdv3-timm
 * https://huggingface.co/depth-anything/Depth-Anything-V2-Large
    * https://huggingface.co/spaces/depth-anything/Depth-Anything-V2
-* https://github.com/richzhang/PerceptualSimilarity
+* https://richzhang.github.io/PerceptualSimilarity
+   * https://github.com/richzhang/PerceptualSimilarity

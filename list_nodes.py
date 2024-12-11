@@ -6,6 +6,36 @@ from random import Random
 import torch
 
 
+def do_repeat(sequence: list, amount: int, repeat: str) -> list:
+    """
+    Repeats elements in a sequence based on the specified amount and repeat type.
+
+    Args:
+        sequence (list): The input sequence to be repeated.
+        amount (int): The number of times each element or the entire sequence should be repeated.
+        repeat (str): The type of repetition, either "consecutively" or "sequence".
+
+    Returns:
+        list: The resulting list after repeating the elements or the entire sequence.
+
+    Raises:
+        AssertionError: If the amount is less than 1 or the repeat type is not valid.
+    """
+    assert amount >= 1
+    assert repeat in ("consecutively", "sequence")
+
+    if repeat == "consecutively":
+        # repeat each element before moving on to next
+        result = []
+        for ele in sequence:
+            result.extend([ele] * amount)
+    else:
+        # repeat entire list
+        result = sequence * amount
+
+    return result
+
+
 class StringSequenceList:
     NUM_INPUTS = 2
 
@@ -26,6 +56,12 @@ class StringSequenceList:
                         "min": 1,
                         "default": 1,
                     },
+                ),
+                "repeat": (
+                    [
+                        "consecutively",
+                        "sequence",
+                    ],
                 ),
             },
             "optional": {},
@@ -52,12 +88,13 @@ class StringSequenceList:
 
     CATEGORY = "private/list"
 
-    def repeat(self, input0: str, amount: int, **kwargs):
-        out_list = [input0]
+    def repeat(self, input0: str, amount: int, repeat: str, **kwargs):
+        sequence = [input0]
         for index in range(self.NUM_INPUTS - 1):
             if (input := kwargs.get(f"input{index + 1}")) is not None:
-                out_list.append(input)
-        return (out_list * amount,)
+                sequence.append(input)
+
+        return (do_repeat(sequence, amount, repeat),)
 
 
 class StringSequenceList5(StringSequenceList):
@@ -107,16 +144,7 @@ class RepeatIntList:
         amount = amount[0]
         repeat = repeat[0]
 
-        if repeat == "consecutively":
-            # repeat each element before moving on to next
-            result = []
-            for ele in input:
-                result.extend([ele] * amount)
-        else:
-            # repeat entire list
-            result = input * amount
-
-        return (result,)
+        return (do_repeat(input, amount, repeat),)
 
 
 class RepeatFloatList:
@@ -161,16 +189,7 @@ class RepeatFloatList:
         amount = amount[0]
         repeat = repeat[0]
 
-        if repeat == "consecutively":
-            # repeat each element before moving on to next
-            result = []
-            for ele in input:
-                result.extend([ele] * amount)
-        else:
-            # repeat entire list
-            result = input * amount
-
-        return (result,)
+        return (do_repeat(input, amount, repeat),)
 
 
 class FloatListStepSize:

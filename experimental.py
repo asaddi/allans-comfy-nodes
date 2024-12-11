@@ -11,6 +11,8 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms.functional as TVF
 
+from .utils import AnyType, ComboType
+
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
 
@@ -449,14 +451,6 @@ class ValueSubstitution:
         return (text,)
 
 
-class AnyType(str):
-    def __ne__(self, other):
-        if self == "*":
-            # If we're the wildcard, match anything
-            return False
-        return super().__ne__(other)
-
-
 class GenericRelay:
     NUM_INPUTS = 2
 
@@ -592,13 +586,6 @@ class ImageRouter:
             image if matched else ExecutionBlocker(None),
             ExecutionBlocker(None) if matched else image,
         )
-
-
-class ComboType(str):
-    def __ne__(self, other):
-        if self == "*" and isinstance(other, list):
-            return False
-        return True
 
 
 class RandomCombo:

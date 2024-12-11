@@ -88,3 +88,18 @@ class WorkflowUtils:
             # TODO When would there be a mismatch?
             if slot < len(values):
                 values[slot] = value
+
+
+class AnyType(str):
+    def __ne__(self, other):
+        if self == "*":
+            # If we're the wildcard, match anything
+            return False
+        return super().__ne__(other)
+
+
+class ComboType(str):
+    def __ne__(self, other):
+        if self == "*" and isinstance(other, list):
+            return False
+        return True

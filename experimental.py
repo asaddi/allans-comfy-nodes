@@ -763,6 +763,7 @@ class DumpToConsole:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "input": ("*",),
                 "use_pprint": (
                     "BOOLEAN",
                     {
@@ -771,7 +772,6 @@ class DumpToConsole:
                         "label_off": "raw",
                     },
                 ),
-                "input": ("*",),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -784,21 +784,22 @@ class DumpToConsole:
 
     TITLE = "Dump To Console"
 
-    RETURN_TYPES = ()
+    RETURN_TYPES = (AnyType("*"),)
+    RETURN_NAMES = ("passthrough",)
     OUTPUT_NODE = True
 
     FUNCTION = "run"
 
     CATEGORY = "private/debug"
 
-    def run(self, use_pprint, input, unique_id):
+    def run(self, input, use_pprint, unique_id):
         print(f"DumpToConsole (#{unique_id}) = ", end="")
         if use_pprint:
             pprint(input)
         else:
             print(input)
 
-        return ()
+        return (input,)
 
 
 class CLIPDistance:

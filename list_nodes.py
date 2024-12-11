@@ -102,13 +102,18 @@ class StringSequenceList5(StringSequenceList):
     TITLE = "String Sequence List 5"
 
 
-class RepeatIntList:
+class RepeatStringList:
+    INPUT_TYPE = "STRING"
+    TITLE = "Repeat String List"
+    # The following is evaluated only once, subclasses must redefine
+    RETURN_TYPES = (INPUT_TYPE,)
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "input": (
-                    "INT",
+                    cls.INPUT_TYPE,
                     {
                         "forceInput": True,
                     },
@@ -129,67 +134,31 @@ class RepeatIntList:
             }
         }
 
+    INPUT_IS_LIST = True
+
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "repeat"
+
+    CATEGORY = "private/list"
+
+    def repeat(self, input: list, amount: list[int], repeat: list[str]):
+        amount = amount[0]
+        repeat = repeat[0]
+
+        return (do_repeat(input, amount, repeat),)
+
+
+class RepeatIntList(RepeatStringList):
+    INPUT_TYPE = "INT"
     TITLE = "Repeat Int List"
-
-    INPUT_IS_LIST = True
-
-    RETURN_TYPES = ("INT",)
-    OUTPUT_IS_LIST = (True,)
-
-    FUNCTION = "repeat"
-
-    CATEGORY = "private/list"
-
-    def repeat(self, input: list[int], amount: list[int], repeat: list[str]):
-        amount = amount[0]
-        repeat = repeat[0]
-
-        return (do_repeat(input, amount, repeat),)
+    RETURN_TYPES = (INPUT_TYPE,)
 
 
-class RepeatFloatList:
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "input": (
-                    "FLOAT",
-                    {
-                        "forceInput": True,
-                    },
-                ),
-                "amount": (
-                    "INT",
-                    {
-                        "min": 1,
-                        "default": 1,
-                    },
-                ),
-                "repeat": (
-                    [
-                        "consecutively",
-                        "sequence",
-                    ],
-                ),
-            }
-        }
-
+class RepeatFloatList(RepeatStringList):
+    INPUT_TYPE = "FLOAT"
     TITLE = "Repeat Float List"
-
-    INPUT_IS_LIST = True
-
-    RETURN_TYPES = ("FLOAT",)
-    OUTPUT_IS_LIST = (True,)
-
-    FUNCTION = "repeat"
-
-    CATEGORY = "private/list"
-
-    def repeat(self, input: list[float], amount: list[int], repeat: list[str]):
-        amount = amount[0]
-        repeat = repeat[0]
-
-        return (do_repeat(input, amount, repeat),)
+    RETURN_TYPES = (INPUT_TYPE,)
 
 
 class FloatListStepSize:
@@ -486,6 +455,7 @@ class SeedList:
 NODE_CLASS_MAPPINGS = {
     "StringSequenceList2": StringSequenceList,
     "StringSequenceList5": StringSequenceList5,
+    "RepeatStringList": RepeatStringList,
     "RepeatFloatList": RepeatFloatList,
     "RepeatIntList": RepeatIntList,
     "ListCounter": ListCounter,

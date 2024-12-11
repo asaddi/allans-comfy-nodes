@@ -5,6 +5,10 @@ from random import Random
 
 import torch
 
+from .utils import ComboType
+
+import folder_paths
+
 
 def do_repeat(sequence: list, amount: int, repeat: str) -> list:
     """
@@ -34,6 +38,61 @@ def do_repeat(sequence: list, amount: int, repeat: str) -> list:
         result = sequence * amount
 
     return result
+
+
+class ModelSequenceList:
+    NUM_INPUTS = 2
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "required": {},
+        }
+
+        models = folder_paths.get_filename_list("checkpoints")
+        for index in range(cls.NUM_INPUTS):
+            # First one may not be "None"
+            d["required"][f"model{index}"] = (
+                models if index == 0 else ["None"] + models,
+            )
+
+        # I want these to appear in the UI after the models
+        d["required"].update(
+            {
+                "amount": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 1,
+                    },
+                ),
+                "repeat": (
+                    [
+                        "consecutively",
+                        "sequence",
+                    ],
+                ),
+            }
+        )
+
+        return d
+
+    TITLE = "Model Sequence List 2"
+
+    RETURN_TYPES = (ComboType("*"),)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "repeat"
+
+    CATEGORY = "private/list"
+
+    def repeat(self, amount: int, repeat: str, **kwargs):
+        sequence = []
+        for index in range(self.NUM_INPUTS):
+            if (model := kwargs.get(f"model{index}")) != "None":
+                sequence.append(model)
+
+        return (do_repeat(sequence, amount, repeat),)
 
 
 class StringSequenceList:
@@ -79,7 +138,7 @@ class StringSequenceList:
 
         return d
 
-    TITLE = "String Sequence List"
+    TITLE = "String Sequence List 2"
 
     RETURN_TYPES = ("STRING",)
     OUTPUT_IS_LIST = (True,)
@@ -453,6 +512,7 @@ class SeedList:
 
 
 NODE_CLASS_MAPPINGS = {
+    # "ModelSequenceList2": ModelSequenceList,
     "StringSequenceList2": StringSequenceList,
     "StringSequenceList5": StringSequenceList5,
     "RepeatStringList": RepeatStringList,

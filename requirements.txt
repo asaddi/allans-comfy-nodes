@@ -10,6 +10,9 @@ matplotlib
 opencv-python
 pydantic
 
+# For my JSON nodes
+jmespath
+
 # Probably already provided
 huggingface-hub
 numpy

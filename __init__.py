@@ -11,6 +11,7 @@ modules = [
     "latch_nodes",
     "switch_nodes",
     "batch_nodes",
+    "json_nodes",
     "experimental",
     "wdv3_nodes",
     "lpips_nodes",
@@ -20,8 +21,8 @@ modules = [
 for mod_name in modules:
     try:
         mod = import_module(f".{mod_name}", package=__name__)
-    except ImportError:
-        warnings.warn(f"{__name__}: Failed to import nodes from {mod_name}")
+    except ImportError as e:
+        warnings.warn(f"{__name__}: Failed to import nodes from {mod_name}: {e}")
 
     NODE_CLASS_MAPPINGS.update(mod.NODE_CLASS_MAPPINGS)
 

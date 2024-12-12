@@ -1,6 +1,7 @@
-import math
+import json
 import os
 from pathlib import Path
+from typing import Any
 
 import PIL
 import PIL.Image
@@ -73,9 +74,9 @@ class BatchImageLoader:
 
     TITLE = "Batch Image Loader"
 
-    RETURN_TYPES = ("IMAGE", "MASK", "STRING")
-    RETURN_NAMES = ("IMAGE", "MASK", "basename")
-    OUTPUT_IS_LIST = (True, True, True)
+    RETURN_TYPES = ("IMAGE", "MASK", "STRING", "JSON")
+    RETURN_NAMES = ("IMAGE", "MASK", "basename", "json")
+    OUTPUT_IS_LIST = (True, True, True, True)
 
     FUNCTION = "batch_load"
 
@@ -93,6 +94,24 @@ class BatchImageLoader:
 
         return sorted(to_process)
 
+    @classmethod
+    def extract_json(cls, image: PIL.Image.Image, filename: str) -> Any:
+        # For now, only attempt to extract from PNGs
+        if image.format != "PNG":
+            return {}
+        # Convert the top-level items to actual JSON
+        out = {}
+        for key, data in image.text.items():
+            try:
+                d = json.loads(data)
+                out[key] = d
+            except json.JSONDecodeError as e:
+                print(f"{cls.__name__}: {filename}: Text key {key} not valid JSON")
+                # Just store it as a string
+                # (Note: It may be a str subclass, hence the cast)
+                out[key] = str(data)
+        return out
+
     def batch_load(
         self,
         path: str,
@@ -105,9 +124,10 @@ class BatchImageLoader:
         # I'll leave the UI at 1-based indexing to be "user friendly"
         start_file = start_file - 1
 
-        out_images = []
-        out_masks = []
-        out_basenames = []
+        out_images: list[torch.Tensor] = []
+        out_masks: list[torch.Tensor] = []
+        out_basenames: list[str] = []
+        out_json: list[Any] = []
 
         file_list = BatchImageLoader.build_file_list(path)
 
@@ -152,6 +172,7 @@ class BatchImageLoader:
             im = PIL.Image.open(input_fn)
             try:
                 a = np.asarray(im)
+                json_metadata = type(self).extract_json(im, input_fn.name)
             finally:
                 im.close()
 
@@ -189,6 +210,7 @@ class BatchImageLoader:
             batch_masks.append(mask)
 
             out_basenames.append(input_fn.stem)
+            out_json.append(json_metadata)
 
         # Catch any stragglers
         add_batch_to_output(force=True)
@@ -201,7 +223,7 @@ class BatchImageLoader:
             unique_id, 2, 1 + min(len(file_list), start_file + max_files_per_run)
         )
 
-        return (out_images, out_masks, out_basenames)
+        return (out_images, out_masks, out_basenames, out_json)
 
 
 NODE_CLASS_MAPPINGS = {

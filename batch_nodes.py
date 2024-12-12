@@ -7,6 +7,8 @@ import PIL.Image
 import numpy as np
 import torch
 
+from .utils import WorkflowUtils
+
 
 class BatchImageLoader:
     @classmethod
@@ -40,13 +42,20 @@ class BatchImageLoader:
                 ),
             },
             "hidden": {
+                "unique_id": "UNIQUE_ID",
                 "extra_pnginfo": "EXTRA_PNGINFO",
             },
         }
 
     @classmethod
     def IS_CHANGED(
-        cls, path, max_batch_size, start_file, max_files_per_run, extra_pnginfo
+        cls,
+        path,
+        max_batch_size,
+        start_file,
+        max_files_per_run,
+        unique_id,
+        extra_pnginfo,
     ):
         input_path = Path(path)
         if input_path.is_dir():
@@ -82,6 +91,7 @@ class BatchImageLoader:
         max_batch_size: int,
         start_file: int,
         max_files_per_run: int,
+        unique_id: str,
         extra_pnginfo: dict,
     ):
         input_path = Path(path)
@@ -175,6 +185,10 @@ class BatchImageLoader:
 
         # Catch any stragglers
         add_batch_to_output(force=True)
+
+        # Scrub the path from the outgoing metadata
+        wfu = WorkflowUtils(extra_pnginfo)
+        wfu.set_widget(unique_id, 0, "")
 
         return (out_images, out_masks, out_basenames)
 

@@ -48,6 +48,17 @@ class BatchImageLoader:
         }
 
     @classmethod
+    def VALIDATE_INPUTS(cls, path):
+        if not path:
+            return "required"
+        input_path = Path(path)
+        if not input_path.is_dir():
+            return "must be a directory"
+        # Note: Don't really want to validate start_file here
+        # In theory, we can though...
+        return True
+
+    @classmethod
     def IS_CHANGED(
         cls,
         path,
@@ -58,10 +69,7 @@ class BatchImageLoader:
         extra_pnginfo,
     ):
         input_path = Path(path)
-        if input_path.is_dir():
-            return input_path.stat().st_mtime
-        else:
-            return math.nan
+        return input_path.stat().st_mtime
 
     TITLE = "Batch Image Loader"
 
@@ -94,10 +102,6 @@ class BatchImageLoader:
         unique_id: str,
         extra_pnginfo: dict,
     ):
-        input_path = Path(path)
-        if not input_path.is_dir():
-            raise ValueError(f"Invalid directory: {path}")
-
         # I'll leave the UI at 1-based indexing to be "user friendly"
         start_file = start_file - 1
 
@@ -106,6 +110,9 @@ class BatchImageLoader:
         out_basenames = []
 
         file_list = BatchImageLoader.build_file_list(path)
+
+        if start_file >= len(file_list):
+            raise ValueError("start_file exceeds number of files in directory")
 
         batch_dim: list[tuple[int, int]] = []
         batch_images: list[torch.Tensor] = []
@@ -189,6 +196,10 @@ class BatchImageLoader:
         # Scrub the path from the outgoing metadata
         wfu = WorkflowUtils(extra_pnginfo)
         wfu.set_widget(unique_id, 0, "")
+        # And update start_file
+        wfu.set_widget(
+            unique_id, 2, 1 + min(len(file_list), start_file + max_files_per_run)
+        )
 
         return (out_images, out_masks, out_basenames)
 

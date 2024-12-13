@@ -1,3 +1,4 @@
+# Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 import json
 import os
 from pathlib import Path

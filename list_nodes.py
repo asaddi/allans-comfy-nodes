@@ -455,29 +455,7 @@ class SeedList:
                     },
                 ),
             },
-            "optional": {
-                "input_list": ("*",),
-            },
         }
-
-    # TODO At this point, it's probably easier to create a str subclass
-    # for the "*" type.
-    @classmethod
-    def VALIDATE_INPUTS(cls, input_types):
-        for i in input_types:
-            # Is seed an input?
-            received_type = i.get("seed")
-            if received_type is not None:
-                # Validate its type
-                if received_type != "INT":
-                    return f"seed, {received_type} != INT"
-
-            received_type = i.get("amount")
-            if received_type is not None:
-                if received_type != "INT":
-                    return f"amount, {received_type} != INT"
-
-        return True
 
     TITLE = "Seed List"
 
@@ -494,18 +472,15 @@ class SeedList:
 
     CATEGORY = "private/list"
 
-    def run(self, seed, amount, input_list=None):
-        # print(seed, None if input_list is None else len(input_list))
-        if input_list is None:
-            input_list = [None] * amount[0]
+    def run(self, seed: list[int], amount: list[int]):
+        # We're going to always use the first value
+        seed: int = seed[0]
+        amount: int = amount[0]
+
+        self._random.seed(seed)
 
         result = []
-        for s, _ in zip_longest(seed, input_list):
-            if s is not None:
-                # Only re-seed if we actually have a seed i.e. not past
-                # the end of the list
-                self._random.seed(s)
-
+        for _ in range(amount):
             result.append(self._random.randint(self.SEED_MIN, self.SEED_MAX))
 
         return (result,)

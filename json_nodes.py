@@ -12,7 +12,7 @@ class JSONExtractNumber:
                     "STRING",
                     {
                         "multiline": True,
-                        "default": "((prompt.*)[?_meta.title=='Seed'].inputs.seed_value)[0]",
+                        "default": "((prompt.*)[?_meta.title=='Seed'].inputs.seed)[0]",
                     },
                 ),
                 "strict": (

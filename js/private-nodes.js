@@ -64,9 +64,11 @@ app.registerExtension({
 		} else if (node?.comfyClass === "PrivateSeed") {
 			node.properties.randomizeSeed = true;
 
-			// rename seed widget
-			const seedWidget = node.widgets.find((w) => w.name === "seed_value");
-			seedWidget.label = "seed";
+			// Get rid of control_after_generate widget
+			const controlIndex = node.widgets.findIndex((w) => w.name === "control_after_generate");
+			node.widgets.splice(controlIndex, 1);
+
+			const seedWidget = node.widgets.find((w) => w.name === "seed");
 
 			const newSeed = () => {
 				seedWidget.value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);

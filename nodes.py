@@ -311,9 +311,8 @@ class PrivateSeed:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                # Avoid calling it "seed" or "noise_seed" so we don't get all
-                # the extra widgets.
-                "seed_value": (
+                # Note: The frontend code will have to delete the extra widget
+                "seed": (
                     "INT",
                     {
                         "min": cls.SEED_MIN,
@@ -329,8 +328,8 @@ class PrivateSeed:
         }
 
     @classmethod
-    def IS_CHANGED(cls, seed_value, unique_id, extra_pnginfo):
-        return seed_value
+    def IS_CHANGED(cls, seed, unique_id, extra_pnginfo):
+        return seed
 
     TITLE = "Seed"
 
@@ -341,15 +340,15 @@ class PrivateSeed:
 
     CATEGORY = "private"
 
-    def run(self, seed_value, unique_id, extra_pnginfo):
-        # print(f"seed_value (#{unique_id}) = {seed_value}")
+    def run(self, seed, unique_id, extra_pnginfo):
+        # print(f"seed (#{unique_id}) = {seed}")
 
         # In the metadata, change this node into a fixed seed
         wf_utls = WorkflowUtils(extra_pnginfo)
         wf_utls.set_property(unique_id, "randomizeSeed", False)
 
         # pass the value back up to the UI so it can update the button
-        return {"ui": {"seed_value": (seed_value,)}, "result": (seed_value,)}
+        return {"ui": {"seed_value": (seed,)}, "result": (seed,)}
 
 
 class SimpleBus:

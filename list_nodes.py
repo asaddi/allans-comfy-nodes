@@ -299,7 +299,7 @@ class ListCounter:
 
     FUNCTION = "count"
 
-    CATEGORY = "private/list"
+    CATEGORY = "private/debug"
 
     def count(self, input, unique_id: list[str]):
         unique_id: str = unique_id[0]
@@ -521,7 +521,7 @@ NODE_CLASS_MAPPINGS = {
     "ListCounter": ListCounter,
     "FloatList": FloatList,
     "FloatListStepSize": FloatListStepSize,
-    "ImageList": ImageList,
-    "LatentList": LatentList,
+    # "ImageList": ImageList,
+    # "LatentList": LatentList,
     "SeedList": SeedList,
 }

@@ -24,7 +24,6 @@ Nodes that generate lists. Useful for workflows that generate a series of images
 * `RepeatStringList` / `RepeatIntList` / `RepeatFloatList` Takes a list of values (e.g. `[a, b, c]`) and repeats them in specific ways. For example, repeating 3 times consecutively: `[a, a, a, b, b, b, c, c, c]` or sequentially: `[a, b, c, a, b, c, a, b, c]`
 * `FloatList` / `FloatListStepSize` Takes a start and end value and outputs a list of floats that iterates through those values. Great for parameter experimentation (e.g. LoRA strength, control net strength, Flux Redux strength).
 * `SeedList` Generates a list of seeds (random numbers). The `SeedList` node itself takes a seed so it is reproducible & deterministic.
-* `ImageList` / `LatentList` Takes an image or latent and simply duplicates it a number of times to generate a list. I don't really use these much anymore (ComfyUI will automatically duplicate inputs, which means the above nodes are more than enough)
 
 ### Utilities
 
@@ -56,8 +55,7 @@ All bus nodes are fully "lazy" -- if nothing uses the output downstream, then th
 
 ### Switches
 
-* `ImageRouter` Routes an incoming image to one of two outputs based on tags (from the WDv3 Tagger below). Can perform argmax (i.e. the tag with the highest probability) or simple threshold testing. Basic RegExp knowledge required.
-* `AnyRelay2` More of an experiement, routes the input to one of 2 outputs based on another input. I don't use this style of switch, so it will probably go away. Fully lazy-input compatible though.
+* `ImageRouter` Routes an incoming image to one of two outputs based on tags (from the WDv3 Tagger below). Can perform argmax (i.e. select the tag with the highest probability) or simple threshold testing. Basic RegExp knowledge required.
 * `ModelSwitch` / `VAESwitch` / `ImageMaskSwitch` Switches that simply select the first non-null input. `ImageMaskSwitch`, of course, will select the first non-null image and its associated mask
 
 ### Debugging

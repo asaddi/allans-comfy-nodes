@@ -828,7 +828,7 @@ NODE_CLASS_MAPPINGS = {
     "ImageRouter": ImageRouter,
     "RandomCombo2": RandomCombo,
     "MaskBlur": MaskBlur,
-    "AnyRelay2": GenericRelay,
+    # "AnyRelay2": GenericRelay,
     # "AnySwitch2": PrivateAnySwitch,
     # "AnySwitch4": PrivateAnySwitch4,
     "DumpToConsole": DumpToConsole,

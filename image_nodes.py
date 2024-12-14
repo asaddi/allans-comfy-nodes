@@ -61,6 +61,13 @@ class MakeImageGrid:
                         "default": True,
                     },
                 ),
+                "padding": (
+                    "INT",
+                    {
+                        "min": 0,
+                        "default": 2,
+                    },
+                ),
             }
         }
 
@@ -83,6 +90,7 @@ class MakeImageGrid:
         columns: list[int],
         rows: list[int],
         major: list[bool],
+        padding: list[int],
     ):
         # Same disclaimer as my other INPUT_IS_LIST nodes
         # I'm going to assume the simple case until otherwise needed
@@ -91,9 +99,10 @@ class MakeImageGrid:
         columns: int = columns[0]
         rows: int = rows[0]
         major: bool = major[0]
+        padding: int = padding[0]
 
         # First pre-process all images, unbatching them and converting
-        # to [H,W,C] C=4
+        # to [H,W,C], C=4
         input_images: list[torch.Tensor] = []
         for batched_image in image:
             for img in batched_image:
@@ -134,6 +143,7 @@ class MakeImageGrid:
             # First, figure out cell size for this set of images
             cell_height: int = 0
             cell_width: int = 0
+            new_batch: list[torch.Tensor] = []
             for img in batch:
                 height, width, _ = img.shape
 
@@ -141,21 +151,25 @@ class MakeImageGrid:
                 cell_height = max(cell_height, h)
                 cell_width = max(cell_width, w)
 
-            print(f"cell dim: {cell_height} x {cell_width}")
-
-            # NB At the moment we don't pad between images
-            grid = torch.zeros((4, cell_height * rows, cell_width * columns))
-            for idx, img in enumerate(batch):
-                height, width, _ = img.shape
-
-                # Next, resize image to target cell size, preserving aspect
-                # ratio
-                h, w = resized_dims(height, width)  # Calculated this twice. What to do?
-
+                # Next, resize image to fit in target cell size
                 # Currently have image [H,W,C], C=4
                 img = img.permute(2, 0, 1).unsqueeze(0)  # First convert to [B,C,H,W]
                 # Then resize to target size
                 img = F.interpolate(img, (h, w), mode="bilinear")
+
+                new_batch.append(img[0])
+
+            # print(f"cell dim: {cell_height} x {cell_width}")
+
+            grid = torch.zeros(
+                (
+                    4,
+                    padding + (cell_height + padding) * rows,
+                    padding + (cell_width + padding) * columns,
+                )
+            )
+            for idx, img in enumerate(new_batch):
+                _, h, w = img.shape
 
                 # Pad to cell size
                 padded = torch.zeros((4, cell_height, cell_width), dtype=torch.float32)
@@ -171,11 +185,9 @@ class MakeImageGrid:
                     col = idx // rows
 
                 # Then place onto grid
-                grid[
-                    :,
-                    row * cell_height : (row + 1) * cell_height,
-                    col * cell_width : (col + 1) * cell_width,
-                ] = padded
+                top = padding + row * (cell_height + padding)
+                left = padding + col * (cell_width + padding)
+                grid[:, top : top + cell_height, left : left + cell_width] = padded
 
             grid = grid.permute(1, 2, 0).unsqueeze(0)  # To [B,H,W,C]
             output_images.append(grid)

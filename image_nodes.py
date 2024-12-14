@@ -19,6 +19,61 @@ from comfy_execution.graph_utils import GraphBuilder
 BASE_PATH = Path(__file__).parent.resolve()
 
 
+# Goes against my philosophy of avoiding nodes that can be done with Core
+# nodes alone (and then not using node expansion).
+# Hmm, but technically, this still needs a "Get Image Dim"-type node, which
+# isn't part of Core...
+class FlattenImageAlpha:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "color": (
+                    "INT",
+                    {
+                        "min": 0x00_00_00,
+                        "max": 0xFF_FF_FF,
+                        "default": 0x00_00_00,
+                    },
+                ),
+            }
+        }
+
+    TITLE = "Flatten Image Alpha"
+
+    RETURN_TYPES = ("IMAGE",)
+
+    FUNCTION = "flatten"
+
+    CATEGORY = "private/image"
+
+    def flatten(self, image: torch.Tensor, color: int):
+        batches, height, width, channels = image.shape
+        if channels < 4:
+            # No alpha channel, nothing to do. Just pass through.
+            return (image,)
+
+        # Separate image & alpha
+        alpha = image[:, :, :, -1, None]
+        image = image[:, :, :, :3]
+
+        r = (color >> 16) & 0xFF
+        g = (color >> 8) & 0xFF
+        b = color & 0xFF
+
+        # Create the background
+        bkg = torch.tile(
+            torch.tensor([r, g, b], dtype=torch.float32) / 255.0, (height, width, 1)
+        )
+        bkg = bkg.expand(batches, -1, -1, -1)
+
+        # Composite image onto background
+        image = image * alpha + bkg * (1.0 - alpha)
+
+        return (image,)
+
+
 class MakeImageGrid:
     @classmethod
     def INPUT_TYPES(cls):
@@ -440,6 +495,7 @@ class MaskBlur:
 
 
 NODE_CLASS_MAPPINGS = {
+    "FlattenImageAlpha": FlattenImageAlpha,
     "MakeImageGrid": MakeImageGrid,
     "WriteTextImage": WriteTextImage,
     "ImageRouter": ImageRouter,

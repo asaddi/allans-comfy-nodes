@@ -37,6 +37,7 @@ Nodes that generate lists. Useful for workflows that generate a series of images
 * `MixNoise` My own take on noise mixing. The mask is much more significant and rather than doing a "blend" (`noise1 * (1.0 - weight) + noise2 * weight`), instead `noise1` is always at full strength and `noise2` is used to perturb it. Currently always normalizes the mixed output.
 * `RandomCombo2` Probabalistically chooses one of two combo options (both customizable, along with their probabilities). Has a seed input, of course. I use it to randomly switch image orientation between portrait & landscape.
 * `JSONExtractString` & `JSONExtractNumber` Uses [JMESPath](https://jmespath.org/) to extract values from JSON (currently, only from the `BatchImageLoader`)
+* `FlattenImageAlpha` Essentially composites an image with alpha onto a solid background. Can be easily done with Core nodes + `ImageDimensions`, but this seemed like a convenient shorthand.
 
 ### Buses (Combiners/Splitters)
 

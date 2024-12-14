@@ -12,6 +12,7 @@ modules = [
     "switch_nodes",
     "batch_nodes",
     "json_nodes",
+    "image_nodes",
     "experimental",
     "wdv3_nodes",
     "lpips_nodes",

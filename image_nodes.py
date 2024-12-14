@@ -1,5 +1,6 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 import itertools
+import math
 from pathlib import Path
 import re
 
@@ -85,13 +86,15 @@ class MakeImageGrid:
     ):
         # Same disclaimer as my other INPUT_IS_LIST nodes
         # I'm going to assume the simple case until otherwise needed
-        cell_width = cell_width[0]
-        cell_height = cell_height[0]
+        cell_width0 = cell_width[0]
+        cell_height0 = cell_height[0]
         columns: int = columns[0]
         rows: int = rows[0]
         major: bool = major[0]
 
-        input_images = []
+        # First pre-process all images, unbatching them and converting
+        # to [H,W,C] C=4
+        input_images: list[torch.Tensor] = []
         for batched_image in image:
             for img in batched_image:
                 # TODO I'm just gonna assume it's already [0, 1] float32
@@ -105,33 +108,61 @@ class MakeImageGrid:
                     alpha = torch.ones((height, width, 1), dtype=torch.float32)
                     img = torch.cat((img, alpha), dim=2)
 
-                # Center image on a square
-                longest = max(height, width)
-                centered = torch.zeros((longest, longest, 4), dtype=torch.float32)
-                top = (longest - height) // 2
-                left = (longest - width) // 2
-                centered[top : top + height, left : left + width, :] = img
+                input_images.append(img)
 
-                # Currently have square image [H,W,C], C=4
-                centered = centered.permute(2, 0, 1).unsqueeze(
-                    0
-                )  # First convert to [B,C,H,W]
-                # Then resize to target
-                new_image = F.interpolate(
-                    centered, (cell_height, cell_width), mode="bilinear"
-                )
-
-                input_images.append(new_image[0])  # Back to [C,H,W]
+        # Next, figure out cell size
+        # for batch in itertools.batched(input_images, rows * columns):
 
         # Yes, I know of torchvision's make_grid
         # For now, we want column-major as an option
 
-        output_images = []
+        def resized_dims(height, width) -> tuple[int, int]:
+            if height == width:
+                h = cell_height0
+                w = cell_width0
+            elif height > width:
+                h = cell_height0
+                w = math.ceil(cell_width0 * (width / height))
+            elif width > height:
+                h = math.ceil(cell_height0 * (height / width))
+                w = cell_width0
+            return h, w
+
+        output_images: list[torch.Tensor] = []
         # Ooh, itertools.batched is Python 3.12+ only. FIXME?
         for batch in itertools.batched(input_images, rows * columns):
+            # First, figure out cell size for this set of images
+            cell_height: int = 0
+            cell_width: int = 0
+            for img in batch:
+                height, width, _ = img.shape
+
+                h, w = resized_dims(height, width)
+                cell_height = max(cell_height, h)
+                cell_width = max(cell_width, w)
+
+            print(f"cell dim: {cell_height} x {cell_width}")
+
             # NB At the moment we don't pad between images
             grid = torch.zeros((4, cell_height * rows, cell_width * columns))
             for idx, img in enumerate(batch):
+                height, width, _ = img.shape
+
+                # Next, resize image to target cell size, preserving aspect
+                # ratio
+                h, w = resized_dims(height, width)  # Calculated this twice. What to do?
+
+                # Currently have image [H,W,C], C=4
+                img = img.permute(2, 0, 1).unsqueeze(0)  # First convert to [B,C,H,W]
+                # Then resize to target size
+                img = F.interpolate(img, (h, w), mode="bilinear")
+
+                # Pad to cell size
+                padded = torch.zeros((4, cell_height, cell_width), dtype=torch.float32)
+                top = (cell_height - h) // 2
+                left = (cell_width - w) // 2
+                padded[:, top : top + h, left : left + w] = img
+
                 if major:  # row-major
                     row = idx // columns
                     col = idx % columns
@@ -139,12 +170,12 @@ class MakeImageGrid:
                     row = idx % rows
                     col = idx // rows
 
-                # Place onto grid
+                # Then place onto grid
                 grid[
                     :,
                     row * cell_height : (row + 1) * cell_height,
                     col * cell_width : (col + 1) * cell_width,
-                ] = img
+                ] = padded
 
             grid = grid.permute(1, 2, 0).unsqueeze(0)  # To [B,H,W,C]
             output_images.append(grid)

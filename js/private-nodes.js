@@ -37,6 +37,18 @@ app.registerExtension({
 					this.calculated_steps = Math.ceil(myRound(steps)) + 1;  // start & end guaranteed
 				}
 			}
+		} else if (nodeType.comfyClass === "ImageBuffer") {
+			nodeType.prototype.clearImageBuffer = function () {
+				const actionWidget = this.widgets.find((w) => w.name === "action");
+				api.fetchApi(`/image_buffer/clear/${this.id}`, { method: "DELETE", }).then((resp) => {
+					resp.json().then((data) => {
+						if (data) {
+							actionWidget.value = true;
+							// TODO clear count widget (if it existed?)
+						}
+					});
+				});
+			}
 		}
 	},
 
@@ -193,6 +205,19 @@ app.registerExtension({
 				});
 			}
 			node.badges.push(makeBadge);
+		} else if (node?.comfyClass === "ImageBuffer") {
+			const clearWidget = node.addWidget(
+				"button",
+				"clear",
+				"clear",
+				() => {
+					node.clearImageBuffer();
+				},
+				{
+					serialize: false,
+				},
+			);
+			clearWidget.label = "🗑️clear buffer";
 		}
 	},
 

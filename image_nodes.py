@@ -1,22 +1,142 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 import itertools
 import math
+import os
 from pathlib import Path
 import re
+import shutil
+import uuid
 
+from aiohttp import web
+from aiohttp.web_request import Request
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageFont
 import numpy as np
+import safetensors
 import torch
 import torch.nn.functional as F
 import torchvision.transforms.functional as TVF
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
+import folder_paths
+from server import PromptServer
 
 
 BASE_PATH = Path(__file__).parent.resolve()
+
+
+class ImageBuffer:
+    _STORAGE_MAP: dict[str, Path] = {}
+
+    def __init__(self):
+        self._uuid = uuid.uuid4()
+        # print(f"uuid = {self._uuid}")
+        self._storage_path = Path(folder_paths.temp_directory) / str(self._uuid)
+        self._storage_path.mkdir(exist_ok=True)
+        self._counter = 0
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": (
+                    "IMAGE",
+                    {
+                        "lazy": True,
+                    },
+                ),
+                "action": (
+                    "BOOLEAN",
+                    {
+                        "label_on": "acc",
+                        "label_off": "rel",
+                        "default": True,
+                    },
+                ),
+                # Rest of widgets will be added by frontend
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+            },
+        }
+
+    TITLE = "Image Buffer"
+
+    RETURN_TYPES = ("IMAGE",)
+    OUTPUT_IS_LIST = (True,)
+
+    OUTPUT_NODE = True
+
+    FUNCTION = "buffer"
+
+    CATEGORY = "private/image"
+
+    def _ensure_mapping(self, unique_id):
+        unique_id = str(unique_id)
+        mapping = type(self)._STORAGE_MAP
+        # Maybe safer to force it every time?
+        if unique_id not in mapping:
+            mapping[unique_id] = self._storage_path
+
+    def build_file_list(self) -> list[str]:
+        to_process = []
+        for root, dirs, files in os.walk(self._storage_path):
+            # No recursion
+            dirs[:] = []
+
+            # Filter by extension?
+            to_process.extend([os.path.join(root, fn) for fn in files])
+
+        return sorted(to_process)
+
+    def check_lazy_status(self, image, action, unique_id):
+        self._ensure_mapping(unique_id)
+        if action and image is None:
+            return ["image"]
+        else:
+            return []
+
+    def buffer(self, image: torch.Tensor, action: bool, unique_id):
+        self._ensure_mapping(unique_id)
+        if action:  # Accumulate
+            for img in image:
+                # img is [H,W,C]
+                d = {"image": img.contiguous()}
+                safetensors.torch.save_file(
+                    d, self._storage_path / f"{self._counter:08d}.sft"
+                )
+                self._counter += 1
+
+            return (ExecutionBlocker(None),)
+        else:  # Release
+            files = self.build_file_list()
+            if not files:
+                raise ValueError("no images accumulated")
+
+            images_out: list[torch.Tensor] = []
+            for fn in files:
+                sft = safetensors.safe_open(fn, "pt")
+                t = sft.get_tensor("image")
+                # They were saved [H,W,C]. Need to make into batches of 1.
+                # TODO batching of like-sized images?
+                images_out.append(t.unsqueeze(0))
+
+            return (images_out,)
+
+
+@PromptServer.instance.routes.delete("/image_buffer/clear/{node_id}")
+async def clear_image_buffer(request: Request):
+    node_id = request.match_info.get("node_id")
+    if node_id:
+        storage_path = ImageBuffer._STORAGE_MAP.get(node_id)
+        if storage_path is not None:
+            # Delete and remake the entire directory
+            shutil.rmtree(storage_path, ignore_errors=True)
+            storage_path.mkdir(exist_ok=True)
+            return web.json_response(True)
+    return web.json_response(False)
 
 
 # Goes against my philosophy of avoiding nodes that can be done with Core
@@ -495,6 +615,7 @@ class MaskBlur:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ImageBuffer": ImageBuffer,
     "FlattenImageAlpha": FlattenImageAlpha,
     "MakeImageGrid": MakeImageGrid,
     "WriteTextImage": WriteTextImage,

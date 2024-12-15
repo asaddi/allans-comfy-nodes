@@ -55,6 +55,12 @@ class ImageBuffer:
                         "default": True,
                     },
                 ),
+                "image_count": (
+                    "INT",
+                    {
+                        "min": 0,
+                    },
+                ),
                 # Rest of widgets will be added by frontend
             },
             "hidden": {
@@ -80,7 +86,7 @@ class ImageBuffer:
         if unique_id not in mapping:
             mapping[unique_id] = self._storage_path
 
-    def build_file_list(self) -> list[str]:
+    def _build_file_list(self) -> list[str]:
         to_process = []
         for root, dirs, files in os.walk(self._storage_path):
             # No recursion
@@ -91,16 +97,31 @@ class ImageBuffer:
 
         return sorted(to_process)
 
-    def check_lazy_status(self, image, action, unique_id):
+    def check_lazy_status(self, image, action, image_count, unique_id):
         self._ensure_mapping(unique_id)
         if action and image is None:
             return ["image"]
         else:
             return []
 
-    def buffer(self, image: torch.Tensor, action: bool, unique_id):
+    def _trim_file_list(self, count: int) -> list[str]:
+        files = self._build_file_list()
+
+        if count < len(files):
+            to_delete = files[count:]
+            # print(f"to_delete = {to_delete}")
+            files = files[:count]
+            for fn in to_delete:
+                Path(fn).unlink(missing_ok=True)
+            # Maybe re-read the directory instead?
+
+        return files
+
+    def buffer(self, image: torch.Tensor, action: bool, image_count: int, unique_id):
         self._ensure_mapping(unique_id)
+        files = self._trim_file_list(image_count)
         if action:  # Accumulate
+            added = 0
             for img in image:
                 # img is [H,W,C]
                 d = {"image": img.contiguous()}
@@ -108,10 +129,14 @@ class ImageBuffer:
                     d, self._storage_path / f"{self._counter:08d}.sft"
                 )
                 self._counter += 1
+                added += 1
 
-            return (ExecutionBlocker(None),)
+            # TODO maybe it's saner to just re-read the directory
+            return {
+                "ui": {"image_count": (len(files) + added,)},
+                "result": (ExecutionBlocker(None),),
+            }
         else:  # Release
-            files = self.build_file_list()
             if not files:
                 raise ValueError("no images accumulated")
 
@@ -123,7 +148,7 @@ class ImageBuffer:
                 # TODO batching of like-sized images?
                 images_out.append(t.unsqueeze(0))
 
-            return (images_out,)
+            return {"ui": {"image_count": (len(files),)}, "result": (images_out,)}
 
 
 @PromptServer.instance.routes.delete("/image_buffer/clear/{node_id}")

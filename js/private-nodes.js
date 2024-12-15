@@ -40,11 +40,12 @@ app.registerExtension({
 		} else if (nodeType.comfyClass === "ImageBuffer") {
 			nodeType.prototype.clearImageBuffer = function () {
 				const actionWidget = this.widgets.find((w) => w.name === "action");
+				const countWidget = this.widgets.find((w) => w.name === "image_count");
 				api.fetchApi(`/image_buffer/clear/${this.id}`, { method: "DELETE", }).then((resp) => {
 					resp.json().then((data) => {
 						if (data) {
 							actionWidget.value = true;
-							// TODO clear count widget (if it existed?)
+							countWidget.value = 0;
 						}
 					});
 				});
@@ -252,6 +253,10 @@ app.registerExtension({
 			} else if (node?.comfyClass === "ListCounter") {
 				const counts = event.detail.output.count;
 				node.element_count = counts[counts.length - 1];
+			} else if (node?.comfyClass === "ImageBuffer") {
+				const countWidget = node.widgets.find((w) => w.name === "image_count");
+				const counts = event.detail.output.image_count;
+				countWidget.value = counts[counts.length - 1];
 			}
 		});
 	},

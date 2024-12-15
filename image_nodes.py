@@ -70,6 +70,8 @@ class ImageBuffer:
 
     TITLE = "Image Buffer"
 
+    INPUT_IS_LIST = True
+
     RETURN_TYPES = ("IMAGE",)
     OUTPUT_IS_LIST = (True,)
 
@@ -98,8 +100,8 @@ class ImageBuffer:
         return sorted(to_process)
 
     def check_lazy_status(self, image, action, image_count, unique_id):
-        self._ensure_mapping(unique_id)
-        if action and image is None:
+        self._ensure_mapping(unique_id[0])
+        if action[0] and image[0] is None:
             return ["image"]
         else:
             return []
@@ -117,24 +119,35 @@ class ImageBuffer:
 
         return files
 
-    def buffer(self, image: torch.Tensor, action: bool, image_count: int, unique_id):
+    def buffer(
+        self,
+        image: list[torch.Tensor],
+        action: list[bool],
+        image_count: list[int],
+        unique_id,
+    ):
+        action: bool = action[0]
+        image_count: int = image_count[0]
+        unique_id: str = unique_id[0]
+
         self._ensure_mapping(unique_id)
         files = self._trim_file_list(image_count)
         if action:  # Accumulate
             added = 0
-            for img in image:
-                # img is [H,W,C]
-                d = {"image": img.contiguous()}
-                safetensors.torch.save_file(
-                    d, self._storage_path / f"{self._counter:08d}.sft"
-                )
-                self._counter += 1
-                added += 1
+            for batched_image in image:
+                for img in batched_image:
+                    # img is [H,W,C]
+                    d = {"image": img.contiguous()}
+                    safetensors.torch.save_file(
+                        d, self._storage_path / f"{self._counter:08d}.sft"
+                    )
+                    self._counter += 1
+                    added += 1
 
             # TODO maybe it's saner to just re-read the directory
             return {
                 "ui": {"image_count": (len(files) + added,)},
-                "result": (ExecutionBlocker(None),),
+                "result": ([ExecutionBlocker(None)],),
             }
         else:  # Release
             if not files:

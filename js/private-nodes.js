@@ -40,12 +40,23 @@ app.registerExtension({
 		} else if (nodeType.comfyClass === "ImageBuffer") {
 			nodeType.prototype.clearImageBuffer = function () {
 				const actionWidget = this.widgets.find((w) => w.name === "action");
-				const countWidget = this.widgets.find((w) => w.name === "image_count");
-				api.fetchApi(`/image_buffer/clear/${this.id}`, { method: "DELETE", }).then((resp) => {
+				const indexWidget = this.widgets.find((w) => w.name === "start_index");
+				api.fetchApi(`/image_buffer/${this.id}`, { method: "DELETE", }).then((resp) => {
 					resp.json().then((data) => {
 						if (data) {
 							actionWidget.value = true;
-							countWidget.value = 0;
+							indexWidget.value = -1;
+							this.image_count = 0;
+						}
+					});
+				});
+			};
+
+			nodeType.prototype.getImageCount = function () {
+				api.fetchApi(`/image_buffer/${this.id}/count`).then((resp) => {
+					resp.json().then((data) => {
+						if (data) {
+							this.image_count = data[0];
 						}
 					});
 				});
@@ -207,6 +218,21 @@ app.registerExtension({
 			}
 			node.badges.push(makeBadge);
 		} else if (node?.comfyClass === "ImageBuffer") {
+			const actionWidget = node.widgets.find((w) => w.name === "action");
+			const indexWidget = node.widgets.find((w) => w.name === "start_index");
+
+			const actionWidget_callback = actionWidget.callback;
+			actionWidget.callback = function (...args) {
+				node.getImageCount();
+				return actionWidget_callback?.apply(this, args);
+			}
+
+			const indexWidget_callback = indexWidget.callback;
+			indexWidget.callback = function (...args) {
+				node.getImageCount();
+				return indexWidget_callback?.apply(this, args);
+			}
+
 			const clearWidget = node.addWidget(
 				"button",
 				"clear",
@@ -219,6 +245,13 @@ app.registerExtension({
 				},
 			);
 			clearWidget.label = "🗑️clear buffer";
+
+			const makeBadge = () => {
+				return new LGraphBadge({
+					text: `images: ${node.image_count ?? "?"}`
+				});
+			}
+			node.badges.push(makeBadge);
 		}
 	},
 
@@ -254,9 +287,10 @@ app.registerExtension({
 				const counts = event.detail.output.count;
 				node.element_count = counts[counts.length - 1];
 			} else if (node?.comfyClass === "ImageBuffer") {
-				const countWidget = node.widgets.find((w) => w.name === "image_count");
+				const indexWidget = node.widgets.find((w) => w.name === "start_index");
 				const counts = event.detail.output.image_count;
-				countWidget.value = counts[counts.length - 1];
+				node.image_count = counts[counts.length - 1];
+				indexWidget.value = -1;
 			}
 		});
 	},

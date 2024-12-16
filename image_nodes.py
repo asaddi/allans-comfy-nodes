@@ -55,10 +55,11 @@ class ImageBuffer:
                         "default": True,
                     },
                 ),
-                "image_count": (
+                "start_index": (
                     "INT",
                     {
-                        "min": 0,
+                        "min": -1,
+                        "default": -1,
                     },
                 ),
                 # Rest of widgets will be added by frontend
@@ -67,6 +68,14 @@ class ImageBuffer:
                 "unique_id": "UNIQUE_ID",
             },
         }
+
+    @classmethod
+    def IS_CHANGED(cls, image, action, start_index, unique_id):
+        if not action[0]:
+            storage_path = cls._STORAGE_MAP.get(unique_id[0])
+            if storage_path is not None:
+                return storage_path.stat().st_mtime
+        return float("NaN")
 
     TITLE = "Image Buffer"
 
@@ -88,9 +97,10 @@ class ImageBuffer:
         if unique_id not in mapping:
             mapping[unique_id] = self._storage_path
 
-    def _build_file_list(self) -> list[str]:
+    @staticmethod
+    def _build_file_list(storage_path: Path) -> list[str]:
         to_process = []
-        for root, dirs, files in os.walk(self._storage_path):
+        for root, dirs, files in os.walk(storage_path):
             # No recursion
             dirs[:] = []
 
@@ -99,20 +109,20 @@ class ImageBuffer:
 
         return sorted(to_process)
 
-    def check_lazy_status(self, image, action, image_count, unique_id):
+    def check_lazy_status(self, image, action, start_index, unique_id):
         self._ensure_mapping(unique_id[0])
         if action[0] and image[0] is None:
             return ["image"]
         else:
             return []
 
-    def _trim_file_list(self, count: int) -> list[str]:
-        files = self._build_file_list()
+    def _trim_file_list(self, index: int) -> list[str]:
+        files = ImageBuffer._build_file_list(self._storage_path)
 
-        if count < len(files):
-            to_delete = files[count:]
+        if index > -1 and index < len(files):
+            to_delete = files[index:]
             # print(f"to_delete = {to_delete}")
-            files = files[:count]
+            files = files[:index]
             for fn in to_delete:
                 Path(fn).unlink(missing_ok=True)
             # Maybe re-read the directory instead?
@@ -123,15 +133,15 @@ class ImageBuffer:
         self,
         image: list[torch.Tensor],
         action: list[bool],
-        image_count: list[int],
+        start_index: list[int],
         unique_id,
     ):
         action: bool = action[0]
-        image_count: int = image_count[0]
+        start_index: int = start_index[0]
         unique_id: str = unique_id[0]
 
         self._ensure_mapping(unique_id)
-        files = self._trim_file_list(image_count)
+        files = self._trim_file_list(start_index)
         if action:  # Accumulate
             added = 0
             for batched_image in image:
@@ -164,7 +174,18 @@ class ImageBuffer:
             return {"ui": {"image_count": (len(files),)}, "result": (images_out,)}
 
 
-@PromptServer.instance.routes.delete("/image_buffer/clear/{node_id}")
+@PromptServer.instance.routes.get("/image_buffer/{node_id}/count")
+async def get_image_buffer_count(request: Request):
+    node_id = request.match_info.get("node_id")
+    if node_id:
+        storage_path = ImageBuffer._STORAGE_MAP.get(node_id)
+        if storage_path is not None:
+            files = ImageBuffer._build_file_list(storage_path)
+            return web.json_response([len(files)])
+    return web.json_response(None)
+
+
+@PromptServer.instance.routes.delete("/image_buffer/{node_id}")
 async def clear_image_buffer(request: Request):
     node_id = request.match_info.get("node_id")
     if node_id:

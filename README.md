@@ -38,6 +38,7 @@ Nodes that generate lists. Useful for workflows that generate a series of images
 * `RandomCombo2` Probabalistically chooses one of two combo options (both customizable, along with their probabilities). Has a seed input, of course. I use it to randomly switch image orientation between portrait & landscape.
 * `JSONExtractString` & `JSONExtractNumber` Uses [JMESPath](https://jmespath.org/) to extract values from JSON (currently, only from the `BatchImageLoader`)
 * `FlattenImageAlpha` Essentially composites an image with alpha onto a solid background. Can be easily done with Core nodes + `ImageDimensions`, but this seemed like a convenient shorthand.
+* `ImageBuffer` Temporary storage for images. Has two modes: "accumulate" and "release." While accumulating, it will save all incoming images. Finally, when you switch to "release," it will output all images. I just got tired of saving test images across multiple prompts and then using the batch loader to do something with them all (e.g. making a grid).
 
 ### Buses (Combiners/Splitters)
 

@@ -38,13 +38,20 @@ class GenericSwitch:
             input = kwargs.get(f"{self.INPUT_NAME}{index}")
             if input is not None:
                 return (input,)
-        return (ExecutionBlocker(f"Node {unique_id}: All inputs missing"),)
+        return (ExecutionBlocker(None),)
 
 
 class VAESwitch2(GenericSwitch):
     INPUT_TYPE = "VAE"
     INPUT_NAME = "vae"
     TITLE = "VAE Switch 2"
+    RETURN_TYPES = (INPUT_TYPE,)
+
+
+class ImageSwitch2(GenericSwitch):
+    INPUT_TYPE = "IMAGE"
+    INPUT_NAME = "image"
+    TITLE = "Image Switch 2"
     RETURN_TYPES = (INPUT_TYPE,)
 
 
@@ -110,7 +117,7 @@ class ImageMaskSwitch:
             if image is not None:
                 return (image, mask if mask is not None else torch.zeros((1, 64, 64)))
         return (
-            ExecutionBlocker(f"Node #{unique_id}: All image inputs missing"),
+            ExecutionBlocker(None),
             torch.zeros((1, 64, 64)),
         )
 
@@ -124,6 +131,7 @@ class ImageMaskSwitch4(ImageMaskSwitch):
 NODE_CLASS_MAPPINGS = {
     "ModelSwitch2": GenericSwitch,
     "VAESwitch2": VAESwitch2,
+    "ImageSwitch2": ImageSwitch2,
     "ImageMaskSwitch2": ImageMaskSwitch,
     "ImageMaskSwitch4": ImageMaskSwitch4,
 }

@@ -352,7 +352,7 @@ class PrivateAnySwitch:
             input = kwargs.get(f"input{i + 1}")
             if input is not None:
                 return (input,)
-        return (ExecutionBlocker(f"{self.TITLE} (#{unique_id}): All inputs muted"),)
+        return (ExecutionBlocker(None),)
 
 
 class PrivateAnySwitch4(PrivateAnySwitch):

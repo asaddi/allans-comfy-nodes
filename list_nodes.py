@@ -40,6 +40,60 @@ def do_repeat(sequence: list, amount: int, repeat: str) -> list:
     return result
 
 
+class ImageSequenceList:
+    NUM_INPUTS = 5
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "required": {},
+            "optional": {},
+        }
+
+        for index in range(cls.NUM_INPUTS):
+            # First one may not be "None"
+            d["required" if index == 0 else "optional"][f"image{index}"] = ("IMAGE",)
+
+        # I want these to appear in the UI after the images
+        d["required"].update(
+            {
+                "amount": (
+                    "INT",
+                    {
+                        "min": 1,
+                        "default": 1,
+                    },
+                ),
+                "repeat": (
+                    [
+                        "consecutively",
+                        "sequence",
+                    ],
+                ),
+            }
+        )
+
+        return d
+
+    TITLE = "Image Sequence List 5"
+
+    RETURN_TYPES = ("IMAGE",)
+    OUTPUT_IS_LIST = (True,)
+
+    FUNCTION = "repeat"
+
+    CATEGORY = "private/list"
+
+    def repeat(self, amount: int, repeat: str, **kwargs):
+        sequence = []
+        for index in range(self.NUM_INPUTS):
+            if (image := kwargs.get(f"image{index}")) is not None:
+                sequence.append(image)
+
+        # TODO Is it the mutator's responsibility to clone inputs?
+        return (do_repeat(sequence, amount, repeat),)
+
+
 class ModelSequenceList:
     NUM_INPUTS = 2
 
@@ -487,6 +541,7 @@ class SeedList:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ImageSequenceList5": ImageSequenceList,
     # "ModelSequenceList2": ModelSequenceList,
     "StringSequenceList2": StringSequenceList,
     "StringSequenceList5": StringSequenceList5,

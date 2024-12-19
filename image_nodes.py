@@ -436,20 +436,18 @@ class WriteTextImage:
             "required": {
                 "image": ("IMAGE",),
                 "value": (
-                    "*",
+                    "FLOAT,INT,STRING",
                     {
                         "forceInput": True,
                     },
                 ),
                 "write_to": (["alpha", "image"],),
-                # Corner too, but for now we'll just force bottom-right.
+                "corner": (["bottom-right", "bottom-left", "top-left", "top-right"],),
+                # Font?
+                # Color?
+                # Do we want to bother with all that?
             },
         }
-
-    @classmethod
-    def VALIDATE_INPUTS(cls, input_types):
-        # TODO Check image's type
-        return True
 
     TITLE = "Write Text to Image"
 
@@ -510,7 +508,7 @@ class WriteTextImage:
 
         return image
 
-    def engrave(self, image: torch.Tensor, value, write_to: str):
+    def engrave(self, image: torch.Tensor, value, write_to: str, corner: str):
         # Convert to [B,C,H,W]
         image = image.permute(0, 3, 1, 2)
 
@@ -536,12 +534,23 @@ class WriteTextImage:
         # Determine text size
         text_size = draw.textbbox((0, 0), text, font=font)[2:]
 
-        # Write text
-        draw.text(
-            (
+        if corner == "bottom-right":
+            pos = (
                 overlay.size[0] - text_size[0] - text_pad,
                 overlay.size[1] - text_size[1] - text_pad,
-            ),
+            )
+        elif corner == "bottom-left":
+            pos = (text_pad, overlay.size[1] - text_size[1] - text_pad)
+        elif corner == "top-left":
+            pos = (text_pad, text_pad)
+        elif corner == "top-right":
+            pos = (overlay.size[0] - text_size[0] - text_pad, text_pad)
+        else:
+            raise ValueError(f"Unhandled corner: {corner}")
+
+        # Write text
+        draw.text(
+            pos,
             text,
             font=font,
             fill=text_color,

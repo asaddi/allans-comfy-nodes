@@ -443,9 +443,20 @@ class WriteTextImage:
                 ),
                 "write_to": (["alpha", "image"],),
                 "corner": (["bottom-right", "bottom-left", "top-left", "top-right"],),
+                "color": (
+                    "INT",
+                    {
+                        "min": 0x00_00_00,
+                        "max": 0xFF_FF_FF,
+                        # Default to fluorescent yellow
+                        "default": 0xCC_FF_00,
+                    },
+                ),
                 # Font?
-                # Color?
-                # Do we want to bother with all that?
+                # Text height?
+                # Text padding?
+                # Do we want to bother with all that? Not fond of nodes with
+                # a million widgets.
             },
         }
 
@@ -481,7 +492,7 @@ class WriteTextImage:
         self, image: torch.Tensor, overlay: PIL.Image.Image
     ) -> list[torch.Tensor]:
         """
-        Convert the overlay to a mask and use it to composite a solid color
+        Convert the overlay to a mask and use it to composite the text
         onto all images.
         """
         # To tensor
@@ -508,7 +519,9 @@ class WriteTextImage:
 
         return image
 
-    def engrave(self, image: torch.Tensor, value, write_to: str, corner: str):
+    def engrave(
+        self, image: torch.Tensor, value, write_to: str, corner: str, color: int
+    ):
         # Convert to [B,C,H,W]
         image = image.permute(0, 3, 1, 2)
 
@@ -522,10 +535,12 @@ class WriteTextImage:
             BASE_PATH / "calibrib.ttf", text_height
         )  # TODO font
 
-        # Since we're dealing with the alpha channel, make initial overlay
-        # fully transparent
+        # Make initial overlay fully opaque. In reality, the RGB channels
+        # will be replaced by the original image.
         overlay_color = (0, 0, 0, 255)
-        text_color = (0xCC, 0xFF, 0, 0)
+        # Just in case we end up writing directly to the image, set the text
+        # color. Make the text alpha fully transparent, regardless.
+        text_color = ((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0)
 
         # Empty image of same size
         overlay = PIL.Image.new("RGBA", (image.shape[3], image.shape[2]), overlay_color)

@@ -25,6 +25,7 @@ class BatchImageLoader:
                     "INT",
                     {
                         "min": 1,
+                        "max": 4096,
                         "default": 4,
                     },
                 ),

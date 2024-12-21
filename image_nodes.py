@@ -476,15 +476,22 @@ class WriteTextImage:
         channel of all images.
         """
         # To tensor
-        alpha = TVF.to_tensor(overlay)  # Should be [3,H,W]
+        alpha = TVF.to_tensor(overlay)  # Should be [4,H,W]
 
         # Extract alpha channel from overlay
         # And make a batch of 1
         alpha = alpha[None, -1, None, :, :]
-
-        # It becomes the original image's alpha channel.
-        # (Discarding any previous alpha channel)
+        # Repeat overlayed alpha to batch size
         alpha = alpha.expand(image.shape[0], -1, -1, -1)
+
+        if image.shape[1] == 4:
+            # Take original alpha from image
+            orig_alpha = image[:, -1, None, :, :]
+            # Merge overlayed alpha with original alpha
+            # Basically, overlayed alpha is on top/has precedence
+            alpha = torch.where(alpha == 1.0, orig_alpha, alpha)
+
+        # And now it becomes the original image's alpha channel.
         image = torch.cat((image[:, :3, :, :], alpha), dim=1)
         return image
 

@@ -6,6 +6,10 @@ This is actually a private set of nodes (though obviously not confidential) that
 
 I have no plans to distribute and/or advertise this project.
 
+Also, I see people starring and cloning this repo. I'm grateful, but the reason these nodes aren't officially "released" or registered over at the ComfyUI registry is because I want the freedom to break things. Sometimes renaming nodes, other times outright deleting them.
+
+Just so you know...
+
 ## Nodes
 
 This list is more for my benefit. If anything looks interesting, let me know and I may break it out into its own (smaller) package.
@@ -20,7 +24,8 @@ This list is more for my benefit. If anything looks interesting, let me know and
 
 Nodes that generate lists. Useful for workflows that generate a series of images that vary in something or another (a strength value, seed, etc.). Queue once, generate many, basically. (Also useful for XY plotting...)
 
-* `StringSequenceList` Takes one or more string inputs, combines them into a sequence (e.g. `[a, b, c]`) and then optionally repeats the sequence.
+* `ImageSequenceList` Takes one or more image inputs, combines them into a sequence (e.g. `[a, b, c]`) and then optionally repeats the sequence. I've found this useful when multiple images are generated at once (e.g. multiple samplers in parallel). It allows me to explicitly specify the order that they will appear in the sequence which helps when generating grids.
+* `StringSequenceList` Takes one or more string inputs, combines them into a sequence (e.g. `[a, b, c]`) and then optionally repeats the sequence. Seems useful for testing prompt variants in a tightly-controlled manner (i.e. no need to step through wildcard combos).
 * `RepeatStringList` / `RepeatIntList` / `RepeatFloatList` Takes a list of values (e.g. `[a, b, c]`) and repeats them in specific ways. For example, repeating 3 times consecutively: `[a, a, a, b, b, b, c, c, c]` or sequentially: `[a, b, c, a, b, c, a, b, c]`
 * `FloatList` / `FloatListStepSize` Takes a start and end value and outputs a list of floats that iterates through those values. Great for parameter experimentation (e.g. LoRA strength, control net strength, Flux Redux strength).
 * `SeedList` Generates a list of seeds (random numbers). The `SeedList` node itself takes a seed so it is reproducible & deterministic.
@@ -58,7 +63,7 @@ All bus nodes are fully "lazy" -- if nothing uses the output downstream, then th
 ### Switches
 
 * `ImageRouter` Routes an incoming image to one of two outputs based on tags (from the WDv3 Tagger below). Can perform argmax (i.e. select the tag with the highest probability) or simple threshold testing. Basic RegExp knowledge required.
-* `ModelSwitch` / `VAESwitch` / `ImageMaskSwitch` Switches that simply select the first non-null input. `ImageMaskSwitch`, of course, will select the first non-null image and its associated mask
+* `ModelSwitch` / `VAESwitch` / `ImageSwitch` / `ImageMaskSwitch` Switches that simply select the first non-null input. `ImageMaskSwitch`, of course, will select the first non-null image and its associated mask
 
 ### Debugging
 
@@ -69,7 +74,7 @@ All bus nodes are fully "lazy" -- if nothing uses the output downstream, then th
 
 I'm pretty sure nodes for these exist elsewhere, but I didn't want to bring in node suites with 50+ nodes and dozens of dependencies just to use them.
 
-See below for links to models & original (Python) projects.
+See below for links to the models & the original (Python) projects.
 
 * Depth Anything V2 support
 * WDv3 Tagger support

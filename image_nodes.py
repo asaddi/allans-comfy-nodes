@@ -27,6 +27,48 @@ from server import PromptServer
 BASE_PATH = Path(__file__).parent.resolve()
 
 
+class ImageCropSquare:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "crop": (["center", "top-left", "bottom-right"],),
+            }
+        }
+
+    TITLE = "Image Crop Square"
+
+    RETURN_TYPES = ("IMAGE",)
+
+    FUNCTION = "expand"
+
+    CATEGORY = "private/image"
+
+    def expand(self, image: torch.Tensor, crop: str):
+        _, height, width, _ = image.shape
+        shortest = min(height, width)
+        if crop == "center":
+            x = (width - shortest) // 2
+            y = (height - shortest) // 2
+        elif crop == "top-left":
+            x, y = 0, 0
+        elif crop == "bottom-right":
+            x = width - shortest
+            y = height - shortest
+        else:
+            raise ValueError(f"Unhandled crop: {crop}")
+
+        graph = GraphBuilder()
+        image_crop = graph.node(
+            "ImageCrop", image=image, width=shortest, height=shortest, x=x, y=y
+        )
+        return {
+            "result": (image_crop.out(0),),
+            "expand": graph.finalize(),
+        }
+
+
 class ImageBuffer:
     _STORAGE_MAP: dict[str, Path] = {}
 
@@ -705,6 +747,7 @@ class MaskBlur:
 
 
 NODE_CLASS_MAPPINGS = {
+    "ImageCropSquare": ImageCropSquare,
     "ImageBuffer": ImageBuffer,
     "FlattenImageAlpha": FlattenImageAlpha,
     "MakeImageGrid": MakeImageGrid,

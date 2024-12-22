@@ -19,6 +19,7 @@ This list is more for my benefit. If anything looks interesting, let me know and
 * `MakeImageGrid` Takes a list or batch of images that may be of varying dimensions, resizes them, and arranges them into a grid
 * `WriteTextImage` Takes an image and a value (which can be anything that can be represented as a string) and writes it either to the image's alpha channel or to the image itself
 * `FloatLatch` & `IntegerLatch` Part of a my series of "latch" nodes which capture an optional input and pass it through to the output. The captured value can be frozen and edited. Note that the `TextLatch` is over at my [ComfyUI-YALLM-node](https://github.com/asaddi/ComfyUI-YALLM-node) suite.
+* `ImageBuffer` Temporary storage for images. Has two modes: "accumulate" and "release." While accumulating, it will save all incoming images. Finally, when you switch to "release," it will output all images. I just got tired of saving test images across multiple prompts and then using the batch loader to do something with them all (e.g. making a grid).
 
 ### Lists
 
@@ -43,7 +44,7 @@ Nodes that generate lists. Useful for workflows that generate a series of images
 * `RandomCombo2` Probabalistically chooses one of two combo options (both customizable, along with their probabilities). Has a seed input, of course. I use it to randomly switch image orientation between portrait & landscape.
 * `JSONExtractString` & `JSONExtractNumber` Uses [JMESPath](https://jmespath.org/) to extract values from JSON (currently, only from the `BatchImageLoader`)
 * `FlattenImageAlpha` Essentially composites an image with alpha onto a solid background. Can be easily done with Core nodes + `ImageDimensions`, but this seemed like a convenient shorthand.
-* `ImageBuffer` Temporary storage for images. Has two modes: "accumulate" and "release." While accumulating, it will save all incoming images. Finally, when you switch to "release," it will output all images. I just got tired of saving test images across multiple prompts and then using the batch loader to do something with them all (e.g. making a grid).
+* `ImageCropSquare` Crops the input image into a square. Aside from center cropping, supports a crop focusing on one of the sides. Under the hood, it simply expands into the Core Image Crop node. Useful for CLIP Vision/IPAdapter usage as it avoids surprises from using a non-square source.
 
 ### Buses (Combiners/Splitters)
 

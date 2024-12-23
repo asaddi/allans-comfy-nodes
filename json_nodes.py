@@ -33,7 +33,7 @@ class JSONExtractNumber:
 
     TITLE = "JSON Extract Number"
 
-    RETURN_TYPES = ("INT,FLOAT",)
+    RETURN_TYPES = ("FLOAT,INT",)
 
     FUNCTION = "json_extract"
 

@@ -13,6 +13,10 @@ from .utils import WorkflowUtils
 
 
 class BatchImageLoader:
+    IMG_EXTENSIONS = set(
+        [".jpg", ".jpeg", ".png", ".ppm", ".bmp", ".pgm", ".tif", ".tiff", ".webp"]
+    )
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -85,14 +89,20 @@ class BatchImageLoader:
     CATEGORY = "private/image"
 
     @staticmethod
-    def build_file_list(path: Path) -> list[str]:
+    def build_file_list(path: Path | str) -> list[Path]:
         to_process = []
-        for root, dirs, files in os.walk(path):
+        for root, dirs, files in Path(path).walk():
             # For now, we aren't recursing
             dirs[:] = []
 
-            # TODO filter by extension?
-            to_process.extend([os.path.join(root, fn) for fn in files])
+            to_process.extend(
+                [
+                    root / fn
+                    for fn in files
+                    if os.path.splitext(fn)[1].lower()
+                    in BatchImageLoader.IMG_EXTENSIONS
+                ]
+            )
 
         return sorted(to_process)
 
@@ -168,9 +178,7 @@ class BatchImageLoader:
                 batch_images[:] = []
                 batch_masks[:] = []
 
-        for fn in file_list[start_file : start_file + max_files_per_run]:
-            input_fn = Path(fn)
-
+        for input_fn in file_list[start_file : start_file + max_files_per_run]:
             im = PIL.Image.open(input_fn)
             try:
                 a = np.asarray(im)
@@ -181,6 +189,10 @@ class BatchImageLoader:
             # TODO Will it always be [0, 255]?
             img = torch.tensor(a, dtype=torch.float32) / 255.0
             # Tensor will be [H,W,C] (always?)
+
+            if len(img.shape) < 3:
+                # No, not always [H,W,C]
+                img = img.unsqueeze(-1)
 
             if img.shape[2] < 3:
                 # Grayscale. Convert to 3 channels.

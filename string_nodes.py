@@ -80,7 +80,7 @@ class TabularJoin:
 
         for index in range(cls.NUM_INPUTS):
             d["required" if index == 0 else "optional"][f"value{index}"] = (
-                "FLOAT,INT,STRING,TABULAR",
+                "BOOLEAN,FLOAT,INT,STRING,TABULAR",
             )
 
         return d

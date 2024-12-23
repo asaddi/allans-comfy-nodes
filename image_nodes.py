@@ -478,7 +478,7 @@ class WriteTextImage:
             "required": {
                 "image": ("IMAGE",),
                 "value": (
-                    "FLOAT,INT,STRING",
+                    "BOOLEAN,FLOAT,INT,STRING",
                     {
                         "forceInput": True,
                     },
@@ -658,8 +658,8 @@ class ImageRouter:
 
     TITLE = "Image Router"
 
-    RETURN_TYPES = ("IMAGE", "IMAGE")
-    RETURN_NAMES = ("pos_match", "neg_match")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "STRING", "BOOLEAN")
+    RETURN_NAMES = ("pos_match", "neg_match", "resolved_tags", "matched")
 
     FUNCTION = "route"
 
@@ -707,6 +707,8 @@ class ImageRouter:
         return (
             image if matched else ExecutionBlocker(None),
             ExecutionBlocker(None) if matched else image,
+            ", ".join(tags),
+            matched,
         )
 
 

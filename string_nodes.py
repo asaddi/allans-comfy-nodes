@@ -1,6 +1,43 @@
 from pathlib import Path
 
 
+class TabularJoin:
+    NUM_INPUTS = 3
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        d = {
+            "required": {},
+            "optional": {},
+        }
+
+        for index in range(cls.NUM_INPUTS):
+            d["required" if index == 0 else "optional"][f"value{index}"] = (
+                "TABULAR,INT,FLOAT,STRING",
+            )
+
+        return d
+
+    TITLE = "Join Tabular Data"
+
+    RETURN_TYPES = ("TABULAR",)
+
+    FUNCTION = "tab_join"
+
+    CATEGORY = "private/string"
+
+    def tab_join(self, **kwargs):
+        result = []
+        for index in range(self.NUM_INPUTS):
+            value = kwargs.get(f"value{index}")
+            if value is not None:
+                if isinstance(value, list):
+                    result.extend(value)
+                else:
+                    result.append(str(value))
+        return (result,)
+
+
 class PathSplit:
     @classmethod
     def INPUT_TYPES(cls):
@@ -22,7 +59,7 @@ class PathSplit:
 
     FUNCTION = "split_path"
 
-    CATEGORY = "private/path"
+    CATEGORY = "private/string"
 
     def split_path(self, path: str):
         p = Path(path)
@@ -50,7 +87,7 @@ class PathJoin:
 
     FUNCTION = "path_join"
 
-    CATEGORY = "private/path"
+    CATEGORY = "private/string"
 
     def path_join(self, dirname: str, basename: str, ext: str):
         if not dirname:
@@ -69,6 +106,7 @@ class PathJoin:
 
 
 NODE_CLASS_MAPPINGS = {
+    "TabularJoin": TabularJoin,
     "PathSplit": PathSplit,
     "PathJoin": PathJoin,
 }

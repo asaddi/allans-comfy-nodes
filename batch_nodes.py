@@ -12,6 +12,73 @@ import torch
 from .utils import WorkflowUtils
 
 
+class PathJoin:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "dirname": ("STRING",),
+                "basename": ("STRING",),
+            },
+            "optional": {
+                "ext": ("STRING",),
+            },
+        }
+
+    TITLE = "Path Join"
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAME = ("path",)
+
+    FUNCTION = "path_join"
+
+    CATEGORY = "private/path"
+
+    def path_join(self, dirname: str, basename: str, ext: str):
+        if not dirname:
+            raise ValueError("dirname required")
+        if not basename:
+            raise ValueError("basename required")
+
+        p = Path(dirname)
+
+        if ext:
+            if not ext.startswith("."):
+                ext = "." + ext
+            basename = basename + ext
+
+        return (str(p / basename),)
+
+
+class PathSplit:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "path": (
+                    "STRING",
+                    {
+                        "forceInput": True,
+                    },
+                ),
+            },
+        }
+
+    TITLE = "Path Split"
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("filename", "dirname", "basename", "ext")
+
+    FUNCTION = "split_path"
+
+    CATEGORY = "private/path"
+
+    def split_path(self, path: str):
+        p = Path(path)
+
+        return (p.name, str(p.parent), p.stem, p.suffix)
+
+
 class BatchImageLoader:
     @classmethod
     def INPUT_TYPES(cls):
@@ -77,7 +144,7 @@ class BatchImageLoader:
     TITLE = "Batch Image Loader"
 
     RETURN_TYPES = ("IMAGE", "MASK", "STRING", "JSON")
-    RETURN_NAMES = ("IMAGE", "MASK", "basename", "json")
+    RETURN_NAMES = ("IMAGE", "MASK", "path", "json")
     OUTPUT_IS_LIST = (True, True, True, True)
 
     FUNCTION = "batch_load"
@@ -128,7 +195,7 @@ class BatchImageLoader:
 
         out_images: list[torch.Tensor] = []
         out_masks: list[torch.Tensor] = []
-        out_basenames: list[str] = []
+        out_paths: list[str] = []
         out_json: list[Any] = []
 
         file_list = BatchImageLoader.build_file_list(path)
@@ -211,7 +278,7 @@ class BatchImageLoader:
             batch_images.append(img)
             batch_masks.append(mask)
 
-            out_basenames.append(input_fn.stem)
+            out_paths.append(str(input_fn))
             out_json.append(json_metadata)
 
         # Catch any stragglers
@@ -225,9 +292,11 @@ class BatchImageLoader:
             unique_id, 2, 1 + min(len(file_list), start_file + max_files_per_run)
         )
 
-        return (out_images, out_masks, out_basenames, out_json)
+        return (out_images, out_masks, out_paths, out_json)
 
 
 NODE_CLASS_MAPPINGS = {
+    "PathSplit": PathSplit,
+    "PathJoin": PathJoin,
     "BatchImageLoader": BatchImageLoader,
 }

@@ -13,6 +13,7 @@ modules = [
     "batch_nodes",
     "json_nodes",
     "image_nodes",
+    "string_nodes",
     "experimental",
     "wdv3_nodes",
     "lpips_nodes",

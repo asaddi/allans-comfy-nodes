@@ -105,6 +105,42 @@ class TabularJoin:
         return (result,)
 
 
+class PathRelativeTo:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "path": (
+                    "STRING",
+                    {
+                        "forceInput": True,
+                    },
+                ),
+                "relative_to": ("STRING",),
+            },
+        }
+
+    TITLE = "Path Relative To"
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("path",)
+
+    FUNCTION = "path_relative_to"
+
+    CATEGORY = "private/string"
+
+    def path_relative_to(self, path: str, relative_to: str):
+        p = Path(path)
+        try:
+            r = p.relative_to(relative_to)
+        except ValueError as e:
+            # TODO standardize on some method of emitting errors/warnings
+            # for my nodes
+            # print(f"WARNING: {e}")
+            r = p
+        return (str(r),)
+
+
 class PathSplit:
     @classmethod
     def INPUT_TYPES(cls):
@@ -175,6 +211,7 @@ class PathJoin:
 NODE_CLASS_MAPPINGS = {
     "SaveTabular": SaveTabular,
     "TabularJoin": TabularJoin,
+    "PathRelativeTo": PathRelativeTo,
     "PathSplit": PathSplit,
     "PathJoin": PathJoin,
 }

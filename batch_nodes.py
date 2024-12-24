@@ -22,9 +22,14 @@ class BatchImageLoader:
         return {
             "required": {
                 "path": ("STRING",),
-                # Recurse?
+                "recurse": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                    },
+                ),
                 # Reverse?
-                # Order by mtime?
+                # Order by mtime? Nah, that's asking for trouble.
                 "max_batch_size": (
                     "INT",
                     {
@@ -69,6 +74,7 @@ class BatchImageLoader:
     def IS_CHANGED(
         cls,
         path,
+        recurse,
         max_batch_size,
         start_file,
         max_files_per_run,
@@ -89,11 +95,11 @@ class BatchImageLoader:
     CATEGORY = "private/image"
 
     @staticmethod
-    def build_file_list(path: Path | str) -> list[Path]:
+    def build_file_list(path: Path | str, recurse: bool = False) -> list[Path]:
         to_process = []
         for root, dirs, files in Path(path).walk():
-            # For now, we aren't recursing
-            dirs[:] = []
+            if not recurse:
+                dirs[:] = []
 
             to_process.extend(
                 [
@@ -127,6 +133,7 @@ class BatchImageLoader:
     def batch_load(
         self,
         path: str,
+        recurse: bool,
         max_batch_size: int,
         start_file: int,
         max_files_per_run: int,
@@ -141,7 +148,7 @@ class BatchImageLoader:
         out_paths: list[str] = []
         out_json: list[Any] = []
 
-        file_list = BatchImageLoader.build_file_list(path)
+        file_list = BatchImageLoader.build_file_list(path, recurse=recurse)
 
         if start_file >= len(file_list):
             raise ValueError("start_file exceeds number of files in directory")

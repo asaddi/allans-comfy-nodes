@@ -1,15 +1,144 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
+import itertools
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
+import zipfile
 
 import PIL
 import PIL.Image
 import numpy as np
 import torch
+import torchvision.transforms.functional as TVF
 
 from .utils import WorkflowUtils
+
+import folder_paths
+
+
+# I'm not sure why I'm putting this node in this module, but we'll go with
+# it for now. Arguably, it's batch-like as well...
+class SaveComicBookArchiveZip:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                # Metadata via (optional) JSON? Perhaps when loading batched
+                # images?
+                "archive": (
+                    "STRING",
+                    {
+                        "default": "ComfyUI",
+                    },
+                ),
+                "filename_prefix": (
+                    "STRING",
+                    {
+                        "default": "img_",
+                    },
+                ),
+                "image_format": (["jpeg", "png"],),
+                # Append flag? For now, we will always append.
+            },
+            "hidden": {
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    TITLE = "Save ComicBookArchive (ZIP)"
+
+    INPUT_IS_LIST = True
+
+    RETURN_TYPES = ()
+
+    OUTPUT_NODE = True
+
+    FUNCTION = "save"
+
+    CATEGORY = "private/image"
+
+    @staticmethod
+    def get_counter(filename_prefix: str, infos: list[zipfile.ZipInfo]) -> int:
+        # TODO optimize, this feels more complex than it needs to be
+        prefix = PurePath(filename_prefix).as_posix()
+        prefix_len = len(prefix)
+        paths = [
+            PurePath(info.filename).with_suffix("").as_posix()
+            for info in infos
+            if not info.is_dir()
+        ]
+        filtered = [p[prefix_len:] for p in paths if p.startswith(prefix)]
+        counts: list[int] = []
+        for p in filtered:
+            try:
+                count = int(p)
+            except ValueError:
+                count = 0
+            counts.append(count)
+        if not counts:
+            counts = [0]
+        return max(counts) + 1
+
+    def save(
+        self,
+        image: list[torch.Tensor],
+        archive: list[str],
+        filename_prefix: list[str],
+        image_format: list[str],
+        prompt: list[dict],
+        extra_pnginfo: list[dict],
+    ):
+        archive: str = archive[0]
+        filename_prefix: str = filename_prefix[0]
+        image_format: str = image_format[0]
+
+        _, ext = os.path.splitext(archive)
+        if ext.lower() != ".cbz":
+            archive += ".cbz"
+
+        with zipfile.ZipFile(
+            os.path.join(folder_paths.output_directory, archive), "a"
+        ) as myzip:
+            counter = SaveComicBookArchiveZip.get_counter(
+                filename_prefix, myzip.infolist()
+            )
+            filename_template = PurePath(filename_prefix).as_posix() + "{:05d}.{}"
+            print(f"counter = {counter}")
+            print(f"filename_template = {filename_template}")
+
+            for batched, pr, ex in itertools.zip_longest(image, prompt, extra_pnginfo):
+                if batched is None:
+                    # No point if there aren't anymore images
+                    break
+                if pr is None:
+                    pr = prompt[-1]
+                if ex is None:
+                    ex = extra_pnginfo[-1]
+
+                for img in batched:
+                    # TODO deal with other channel configurations
+                    im = TVF.to_pil_image(img.permute(2, 0, 1))
+                    if image_format == "png":
+                        with myzip.open(
+                            filename_template.format(counter, "png"), "w"
+                        ) as out:
+                            # TODO metadata
+                            im.save(out, "PNG")
+                    elif image_format == "jpeg":
+                        with myzip.open(
+                            filename_template.format(counter, "jpg"), "w"
+                        ) as out:
+                            # TODO jpeg quality
+                            # TODO metadata
+                            im.save(out, "JPEG", quality=90)
+                    else:
+                        raise ValueError(f"Unhandled image_format: {image_format}")
+                    counter += 1
+
+        return ()
 
 
 class BatchImageLoader:
@@ -248,5 +377,6 @@ class BatchImageLoader:
 
 
 NODE_CLASS_MAPPINGS = {
+    "SaveComicBookArchiveZip": SaveComicBookArchiveZip,
     "BatchImageLoader": BatchImageLoader,
 }

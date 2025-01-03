@@ -31,20 +31,25 @@ Nodes that generate lists. Useful for workflows that generate a series of images
 * `FloatList` / `FloatListStepSize` Takes a start and end value and outputs a list of floats that iterates through those values. Great for parameter experimentation (e.g. LoRA strength, control net strength, Flux Redux strength).
 * `SeedList` Generates a list of seeds (random numbers). The `SeedList` node itself takes a seed so it is reproducible & deterministic.
 
-### Utilities
+### Image Utilities
 
-* `BatchImageLoader` My version of a batch image loader. Batches images of like dimensions together, generates lists. Supports alpha channels/masks as well as JSON extraction (i.e. prompt/workflow data)
-* `PrivateLoraStack` My super simple version of a LoRA stack. Uses ~~domain~~ node expansion and chains the Core LoRA loader appropriately.
+* `BatchImageLoader` My version of a batch image loader. Batches images of like dimensions together, generates lists, supports directory recursion. Supports alpha channels/masks as well as JSON extraction (i.e. prompt/workflow data)
+   * `JSONExtractString` & `JSONExtractNumber` Uses [JMESPath](https://jmespath.org/) to extract values from JSON (currently, only from the `BatchImageLoader`)
+   * `PathJoin`, `PathSplit` & `PathRelativeTo`. A set of string utilities meant for manipulating & extracting information from file paths. Usually used with `BatchImageLoader`.
 * `MaskBlur` Basically just a glorified group node to apply Gaussian blur to a mask
 * `ImageDimensions` Extracts width/height from an image (also displays it as a node badge, so you can see the dimensions at a glance without any other nodes)
+* `FlattenImageAlpha` Essentially composites an image with alpha onto a solid background. Can be easily done with Core nodes + `ImageDimensions`, but this seemed like a convenient shorthand.
+* `ImageCropSquare` Crops the input image into a square. Aside from center cropping, supports a crop focusing on one of the sides. Under the hood, it simply expands into the Core Image Crop node. Useful for CLIP Vision/IPAdapter usage as it avoids surprises from using a non-square source.
+* `SaveComicBookArchive` Saves images into a ComicBookArchive (it's just a zip file).
+
+### Utilities
+
+* `PrivateLoraStack` My super simple version of a LoRA stack. Uses ~~domain~~ node expansion and chains the Core LoRA loader appropriately.
 * `ResolutionChooser` Selects resolutions based on: desired aspect ratio, desired orientation, mebipixel budget (mebi = 2^20 = 1,048,576, not exactly 1 million), divisor/multiple which is typically 64 for most diffusion models (i.e. resolution rounded to 64 pixels)
 * `EmptyLatentImageSelector` Another glorified group node that picks the correct Core EmptyLatent for the selected model
 * `PrivateSeed` My own seed generator with history
 * `MixNoise` My own take on noise mixing. The mask is much more significant and rather than doing a "blend" (`noise1 * (1.0 - weight) + noise2 * weight`), instead `noise1` is always at full strength and `noise2` is used to perturb it. Currently always normalizes the mixed output.
 * `RandomCombo2` Probabalistically chooses one of two combo options (both customizable, along with their probabilities). Has a seed input, of course. I use it to randomly switch image orientation between portrait & landscape.
-* `JSONExtractString` & `JSONExtractNumber` Uses [JMESPath](https://jmespath.org/) to extract values from JSON (currently, only from the `BatchImageLoader`)
-* `FlattenImageAlpha` Essentially composites an image with alpha onto a solid background. Can be easily done with Core nodes + `ImageDimensions`, but this seemed like a convenient shorthand.
-* `ImageCropSquare` Crops the input image into a square. Aside from center cropping, supports a crop focusing on one of the sides. Under the hood, it simply expands into the Core Image Crop node. Useful for CLIP Vision/IPAdapter usage as it avoids surprises from using a non-square source.
 
 ### Buses (Combiners/Splitters)
 
@@ -65,6 +70,13 @@ All bus nodes are fully "lazy" -- if nothing uses the output downstream, then th
 
 * `ImageRouter` Routes an incoming image to one of two outputs based on tags (from the WDv3 Tagger below). Can perform argmax (i.e. select the tag with the highest probability) or simple threshold testing. Basic RegExp knowledge required.
 * `ModelSwitch` / `VAESwitch` / `ImageSwitch` / `ImageMaskSwitch` Switches that simply select the first non-null input. `ImageMaskSwitch`, of course, will select the first non-null image and its associated mask
+
+### Tabular Data
+
+An experimental set of nodes for creating tabular data, specifically for generating CSV or TSV files.
+
+* `TabularJoin` Combines multiple inputs into a single row of data. Can be used recursively for an arbitrary number of columns.
+* `TabularSave` Saves tabular data into a CSV or TSV file.
 
 ### Debugging
 

@@ -19,7 +19,7 @@ import folder_paths
 
 # I'm not sure why I'm putting this node in this module, but we'll go with
 # it for now. Arguably, it's batch-like as well...
-class SaveComicBookArchiveZip:
+class SaveComicBookArchive:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -27,10 +27,14 @@ class SaveComicBookArchiveZip:
                 "image": ("IMAGE",),
                 # Metadata via (optional) JSON? Perhaps when loading batched
                 # images?
-                "archive": (
+                # Note: I don't think %-based substitution is available by
+                # default? (Needs property set on frontend)
+                # Might have to do it server-side as well (similar to updated
+                # SaveImage node) for compatibility with API. TODO
+                "archive_name": (
                     "STRING",
                     {
-                        "default": "ComfyUI",
+                        "default": "MyComicBook",
                     },
                 ),
                 "filename_prefix": (
@@ -40,6 +44,17 @@ class SaveComicBookArchiveZip:
                     },
                 ),
                 "image_format": (["jpeg", "png"],),
+                # TODO Alternate way of handling this is having format-specific
+                # nodes and an optional input.
+                "image_quality": (
+                    "INT",
+                    {
+                        "min": 0,
+                        "max": 100,
+                        "default": 85,
+                        "tooltip": "Compression quality, typically 5-95. Only used for JPEG images.",
+                    },
+                ),
                 # Append flag? For now, we will always append.
             },
             "hidden": {
@@ -48,6 +63,9 @@ class SaveComicBookArchiveZip:
             },
         }
 
+    # Note: The only other archive format we have ready access to (without
+    # pulling in extra dependencies) is TAR (.cbt). I can't imagine it's
+    # used much, especially over ZIP.
     TITLE = "Save ComicBookArchive (ZIP)"
 
     INPUT_IS_LIST = True
@@ -62,10 +80,14 @@ class SaveComicBookArchiveZip:
 
     @staticmethod
     def get_counter(filename_prefix: str, infos: list[zipfile.ZipInfo]) -> int:
-        # TODO optimize, this feels more complex than it needs to be
+        # Note: We're allowing the filename_prefix to contain subdirectories.
+        # We will canonicalize all filenames "as_posix" i.e. forward-slash.
         prefix = PurePath(filename_prefix).as_posix()
         prefix_len = len(prefix)
+        # TODO optimize, this feels more complex than it needs to be
         paths = [
+            # Only interested in existing files within the archive.
+            # Also remove the extension.
             PurePath(info.filename).with_suffix("").as_posix()
             for info in infos
             if not info.is_dir()
@@ -79,35 +101,40 @@ class SaveComicBookArchiveZip:
                 count = 0
             counts.append(count)
         if not counts:
+            # In case of no matches...
             counts = [0]
         return max(counts) + 1
 
     def save(
         self,
         image: list[torch.Tensor],
-        archive: list[str],
+        archive_name: list[str],
         filename_prefix: list[str],
         image_format: list[str],
+        image_quality: list[int],
         prompt: list[dict],
         extra_pnginfo: list[dict],
     ):
-        archive: str = archive[0]
+        archive_name: str = archive_name[0]
         filename_prefix: str = filename_prefix[0]
         image_format: str = image_format[0]
+        image_quality: int = image_quality[0]
 
-        _, ext = os.path.splitext(archive)
+        _, ext = os.path.splitext(archive_name)
         if ext.lower() != ".cbz":
-            archive += ".cbz"
+            archive_name += ".cbz"
 
+        # Note: Default compression is just "store"
+        # Give user a choice? Or just not bother? Going with latter...
         with zipfile.ZipFile(
-            os.path.join(folder_paths.output_directory, archive), "a"
+            os.path.join(folder_paths.output_directory, archive_name), "a"
         ) as myzip:
-            counter = SaveComicBookArchiveZip.get_counter(
+            counter = SaveComicBookArchive.get_counter(
                 filename_prefix, myzip.infolist()
             )
             filename_template = PurePath(filename_prefix).as_posix() + "{:05d}.{}"
-            print(f"counter = {counter}")
-            print(f"filename_template = {filename_template}")
+            # print(f"counter = {counter}")
+            # print(f"filename_template = {filename_template}")
 
             for batched, pr, ex in itertools.zip_longest(image, prompt, extra_pnginfo):
                 if batched is None:
@@ -131,9 +158,8 @@ class SaveComicBookArchiveZip:
                         with myzip.open(
                             filename_template.format(counter, "jpg"), "w"
                         ) as out:
-                            # TODO jpeg quality
                             # TODO metadata
-                            im.save(out, "JPEG", quality=90)
+                            im.save(out, "JPEG", quality=image_quality, optimize=True)
                     else:
                         raise ValueError(f"Unhandled image_format: {image_format}")
                     counter += 1
@@ -377,6 +403,6 @@ class BatchImageLoader:
 
 
 NODE_CLASS_MAPPINGS = {
-    "SaveComicBookArchiveZip": SaveComicBookArchiveZip,
+    "SaveComicBookArchive": SaveComicBookArchive,
     "BatchImageLoader": BatchImageLoader,
 }

@@ -17,7 +17,7 @@ def do_repeat(sequence: list, amount: int, repeat: str) -> list:
     Args:
         sequence (list): The input sequence to be repeated.
         amount (int): The number of times each element or the entire sequence should be repeated.
-        repeat (str): The type of repetition, either "consecutively" or "sequence".
+        repeat (str): The type of repetition, either "element-wise" or "sequence".
 
     Returns:
         list: The resulting list after repeating the elements or the entire sequence.
@@ -26,9 +26,9 @@ def do_repeat(sequence: list, amount: int, repeat: str) -> list:
         AssertionError: If the amount is less than 1 or the repeat type is not valid.
     """
     assert amount >= 1
-    assert repeat in ("consecutively", "sequence")
+    assert repeat in ("element-wise", "sequence")
 
-    if repeat == "consecutively":
+    if repeat == "element-wise":
         # repeat each element before moving on to next
         result = []
         for ele in sequence:
@@ -66,7 +66,7 @@ class ImageSequenceList:
                 ),
                 "repeat": (
                     [
-                        "consecutively",
+                        "element-wise",
                         "sequence",
                     ],
                 ),
@@ -122,7 +122,7 @@ class ModelSequenceList:
                 ),
                 "repeat": (
                     [
-                        "consecutively",
+                        "element-wise",
                         "sequence",
                     ],
                 ),
@@ -172,7 +172,7 @@ class StringSequenceList:
                 ),
                 "repeat": (
                     [
-                        "consecutively",
+                        "element-wise",
                         "sequence",
                     ],
                 ),
@@ -240,7 +240,7 @@ class RepeatStringList:
                 ),
                 "repeat": (
                     [
-                        "consecutively",
+                        "element-wise",
                         "sequence",
                     ],
                 ),

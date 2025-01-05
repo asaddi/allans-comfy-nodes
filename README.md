@@ -27,7 +27,7 @@ Nodes that generate lists. Useful for workflows that generate a series of images
 
 * `ImageSequenceList` Takes one or more image inputs, combines them into a sequence (e.g. `[a, b, c]`) and then optionally repeats the sequence. I've found this useful when multiple images are generated at once (e.g. multiple samplers in parallel). It allows me to explicitly specify the order that they will appear in the sequence which helps when generating grids.
 * `StringSequenceList` Takes one or more string inputs, combines them into a sequence (e.g. `[a, b, c]`) and then optionally repeats the sequence. Seems useful for testing prompt variants in a tightly-controlled manner (i.e. no need to step through wildcard combos).
-* `RepeatStringList` / `RepeatIntList` / `RepeatFloatList` Takes a list of values (e.g. `[a, b, c]`) and repeats them in specific ways. For example, repeating 3 times consecutively: `[a, a, a, b, b, b, c, c, c]` or sequentially: `[a, b, c, a, b, c, a, b, c]`
+* `RepeatStringList` / `RepeatIntList` / `RepeatFloatList` Takes a list of values (e.g. `[a, b, c]`) and repeats them in specific ways. For example, repeating 3 times element-wise: `[a, a, a, b, b, b, c, c, c]` or sequentially: `[a, b, c, a, b, c, a, b, c]`
 * `FloatList` / `FloatListStepSize` Takes a start and end value and outputs a list of floats that iterates through those values. Great for parameter experimentation (e.g. LoRA strength, control net strength, Flux Redux strength).
 * `SeedList` Generates a list of seeds (random numbers). The `SeedList` node itself takes a seed so it is reproducible & deterministic.
 

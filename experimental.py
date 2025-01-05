@@ -29,6 +29,17 @@ class Noise_MixedNoise:
     def seed(self) -> int:
         return self.noise_base.seed
 
+    @staticmethod
+    def std_mean_masked(
+        input: torch.Tensor, mask: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        expanded_mask = mask.expand_as(input)
+        mask_bool = expanded_mask.type(torch.bool)
+        selected_values = input[mask_bool]
+        mean_val = selected_values.mean()
+        std_val = selected_values.std()
+        return std_val, mean_val
+
     def generate_noise(self, input_latent):
         base = self.noise_base.generate_noise(input_latent)
         # If there's nothing else to do, do nothing
@@ -50,6 +61,8 @@ class Noise_MixedNoise:
                 1, 1, latent_image.shape[2], latent_image.shape[3], dtype=torch.float32
             )
 
+        mask = mask.expand_as(base)
+
         # And finally, apply it to the noise being mixed in...
         unmasked_base = base * (1.0 - mask)
         masked_base = base * mask
@@ -61,11 +74,12 @@ class Noise_MixedNoise:
         # That's unmasked_base
 
         # Perform Z-score normalization on masked area. Thanks, Llama 3.3!
-        new_std, new_mean = torch.std_mean(mixed)
+        new_std, new_mean = Noise_MixedNoise.std_mean_masked(mixed, mask)
         normalized = (mixed - new_mean) / new_std
 
-        orig_std, orig_mean = torch.std_mean(masked_base)
+        orig_std, orig_mean = Noise_MixedNoise.std_mean_masked(masked_base, mask)
         mixed = normalized * orig_std + orig_mean
+        mixed = mixed * mask
 
         # Finally, add in the unmasked area (if any)
         mixed = unmasked_base + mixed

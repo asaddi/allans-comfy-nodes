@@ -421,7 +421,7 @@ class SimpleBus:
         latent=None,
         guider=None,
     ):
-        unique_id = int(unique_id)
+        unique_id = str(unique_id)
 
         # TODO do all this lazily
         p_utils = PromptUtils(prompt)
@@ -549,7 +549,7 @@ class ControlBus(SimpleBus):
         image=None,
         mask=None,
     ):
-        unique_id = int(unique_id)
+        unique_id = str(unique_id)
 
         p_utils = PromptUtils(prompt)
         downstream = p_utils.get_downstream_nodes(unique_id, 0)

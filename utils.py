@@ -69,7 +69,7 @@ class WorkflowUtils:
             and (workflow := self.extra_pnginfo.get("workflow")) is not None
             and (nodes := workflow.get("nodes")) is not None
         ):
-            node_id = str(node_id)
+            node_id = int(node_id)
             # TODO For the time being, we aren't caching anything.
             # Concievably, if there are a large number of nodes, a lot of time
             # could be wasted searching.

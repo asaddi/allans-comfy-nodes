@@ -9,6 +9,69 @@ class WildParserState(Enum):
     CHOICES_ESCAPE = auto()
 
 
+def _flush_lit(buf: list[str], target: list) -> None:
+    # Append buffered chars to target as one LITERAL token, then empty buf
+    if buf:
+        target.append((WildParserState.LITERAL, "".join(buf)))
+        buf.clear()
+
+
+def _append_char(lit: list[str], c: str, pending_optional: bool) -> bool:
+    # Append a literal char, materializing a pending `*` first; the `*` is
+    # consumed, so the updated pending_optional is always False
+    if pending_optional:
+        lit.append("*")
+    lit.append(c)
+    return False
+
+
+def _push_context(
+    stack: list,
+    is_top_level: bool,
+    pending_optional: bool,
+    choice_parts: list,
+    choices: list,
+) -> tuple[bool, list, list]:
+    # Save the current choice context on the stack; return the reset loop
+    # variables (pending_optional, choice_parts, choices) for the new choice
+    stack.append((is_top_level, pending_optional, choice_parts, choices))
+    return False, [], []
+
+
+def _pop_frame(
+    stack: list,
+    choices: list,
+    output: list,
+    apply_optional: bool,
+    finalize_option: bool,
+) -> tuple[bool, bool, list, list]:
+    # Pop a choice context and attach the completed CHOICES token.
+    # Returns (is_top_level, pending_optional, choice_parts, choices) to restore.
+    # apply_optional: emit the empty choice for a pending `*` (done when a `}`
+    # closed the choice, not at end of input). finalize_option: also close the
+    # parent's in-progress option (only needed when unwinding at end of input).
+    (
+        is_top_level,
+        prev_pending_optional,
+        prev_choice_parts,
+        prev_choices,
+    ) = stack.pop()
+    if apply_optional and prev_pending_optional:
+        # Handle optional: add empty choice for *{...}
+        choices.append([(WildParserState.LITERAL, "")])
+    choice_token = (WildParserState.CHOICES, choices)
+    if is_top_level:
+        # This was a top-level choice, add to output
+        output.append(choice_token)
+        return is_top_level, False, [], []
+    # This was nested choice, add to parent's current choice option
+    prev_choice_parts.append(choice_token)
+    if finalize_option and prev_choice_parts:
+        prev_choices.append(prev_choice_parts)
+    pending = False if apply_optional else prev_pending_optional
+    return is_top_level, pending, prev_choice_parts, prev_choices
+
+
 def parse_wildcards(input: str) -> list[tuple[WildParserState, Any]]:
     # Use a stack for nested choice contexts
     # Stack frame: (is_top_level, prev_pending_optional, prev_choice_parts, prev_choices)
@@ -27,23 +90,16 @@ def parse_wildcards(input: str) -> list[tuple[WildParserState, Any]]:
             if c == "\\":
                 state = WildParserState.ESCAPE
             elif c == "{":
-                # Flush any pending literal to output
-                if len(lit) > 0:
-                    output.append((WildParserState.LITERAL, "".join(lit)))
-                    lit = []
-                # Mark this as top-level choice (entered from LITERAL)
-                stack.append((True, pending_optional, [], []))
-                pending_optional = False
-                choice_parts = []
-                choices = []
+                # Flush any pending literal to output, start a top-level choice
+                _flush_lit(lit, output)
+                pending_optional, choice_parts, choices = _push_context(
+                    stack, True, pending_optional, [], []
+                )
                 state = WildParserState.CHOICES
             elif c == "*":
                 pending_optional = True
             else:
-                if pending_optional:
-                    lit.append("*")
-                    pending_optional = False
-                lit.append(c)
+                pending_optional = _append_char(lit, c, pending_optional)
 
         elif state == WildParserState.ESCAPE:
             lit.append(c)
@@ -54,81 +110,43 @@ def parse_wildcards(input: str) -> list[tuple[WildParserState, Any]]:
             if c == "\\":
                 state = WildParserState.CHOICES_ESCAPE
             elif c == "}":
-                # End of choice - flush lit to choice_parts
-                if len(lit) > 0:
-                    choice_parts.append((WildParserState.LITERAL, "".join(lit)))
-                    lit = []
-                # Complete current choice option
-                if len(choice_parts) > 0:
+                # End of choice: flush lit to choice_parts, complete the option
+                _flush_lit(lit, choice_parts)
+                if choice_parts:
                     choices.append(choice_parts)
                 choice_parts = []
-                # Build CHOICES token
-                choice_token = (WildParserState.CHOICES, choices)
-                # Pop stack
                 if stack:
-                    (
-                        is_top_level,
-                        prev_pending_optional,
-                        prev_choice_parts,
-                        prev_choices,
-                    ) = stack.pop()
-                    if is_top_level:
-                        # This was a top-level choice, add to output
-                        # Handle optional: add empty choice for *{...}
-                        if prev_pending_optional:
-                            choices.append([(WildParserState.LITERAL, "")])
-                            choice_token = (WildParserState.CHOICES, choices)
-                        output.append(choice_token)
-                        pending_optional = False
-                        state = WildParserState.LITERAL
-                        choice_parts = []
-                        choices = []
-                    else:
-                        # This was nested choice, add to parent's current choice option
-                        # Handle optional: add empty choice for *{...}
-                        if prev_pending_optional:
-                            choices.append([(WildParserState.LITERAL, "")])
-                            choice_token = (WildParserState.CHOICES, choices)
-                        prev_choice_parts.append(choice_token)
-                        pending_optional = prev_pending_optional
-                        # Since we handled prev_pending_optional above, reset it
-                        pending_optional = False
-                        choice_parts = prev_choice_parts
-                        choices = prev_choices
-                        state = WildParserState.CHOICES
+                    is_top, pending_optional, choice_parts, choices = _pop_frame(
+                        stack,
+                        choices,
+                        output,
+                        apply_optional=True,
+                        finalize_option=False,
+                    )
+                    state = (
+                        WildParserState.LITERAL if is_top else WildParserState.CHOICES
+                    )
                 else:
                     # Stack underflow - shouldn't happen, but handle gracefully
-                    output.append(choice_token)
+                    output.append((WildParserState.CHOICES, choices))
                     pending_optional = False
                     state = WildParserState.LITERAL
             elif c == "{":
-                # Nested choice start - flush lit to choice_parts first
-                if len(lit) > 0:
-                    choice_parts.append((WildParserState.LITERAL, "".join(lit)))
-                    lit = []
-                # Push current context (mark as NOT top-level)
-                stack.append((False, pending_optional, choice_parts, choices))
-                # Start new nested choice
-                pending_optional = False
-                choice_parts = []
-                choices = []
-                state = WildParserState.CHOICES
+                # Nested choice start: flush lit to choice_parts, save context
+                _flush_lit(lit, choice_parts)
+                pending_optional, choice_parts, choices = _push_context(
+                    stack, False, pending_optional, choice_parts, choices
+                )
             elif c == "|":
-                # Flush lit to choice_parts
-                if len(lit) > 0:
-                    choice_parts.append((WildParserState.LITERAL, "".join(lit)))
-                    lit = []
                 # Complete current choice option and start new one
-                if len(choice_parts) > 0:
+                _flush_lit(lit, choice_parts)
+                if choice_parts:
                     choices.append(choice_parts)
                 choice_parts = []
             elif c == "*":
                 pending_optional = True
             else:
-                if pending_optional:
-                    lit.append("*")
-                    pending_optional = False
-                lit.append(c)
+                pending_optional = _append_char(lit, c, pending_optional)
 
         elif state == WildParserState.CHOICES_ESCAPE:
             lit.append(c)
@@ -137,61 +155,24 @@ def parse_wildcards(input: str) -> list[tuple[WildParserState, Any]]:
 
     # Clean up at end of input
     if state == WildParserState.LITERAL:
-        if len(lit) > 0:
-            output.append((WildParserState.LITERAL, "".join(lit)))
+        _flush_lit(lit, output)
     elif state == WildParserState.ESCAPE:
         # Escape at end of string, preserve the backslash
         lit.append("\\")
-        output.append((WildParserState.LITERAL, "".join(lit)))
-    elif state == WildParserState.CHOICES:
-        if len(lit) > 0:
-            choice_parts.append((WildParserState.LITERAL, "".join(lit)))
-        if len(choice_parts) > 0:
+        _flush_lit(lit, output)
+    elif state in (WildParserState.CHOICES, WildParserState.CHOICES_ESCAPE):
+        if state == WildParserState.CHOICES_ESCAPE:
+            # Escape at end of choice, preserve the backslash
+            lit.append("\\")
+        _flush_lit(lit, choice_parts)
+        if choice_parts:
             choices.append(choice_parts)
         # Unwind stack
         while stack:
-            is_top_level, prev_pending_optional, prev_choice_parts, prev_choices = (
-                stack.pop()
+            _, pending_optional, choice_parts, choices = _pop_frame(
+                stack, choices, output, apply_optional=False, finalize_option=True
             )
-            choice_token = (WildParserState.CHOICES, choices)
-            if is_top_level:
-                output.append(choice_token)
-                choices = []
-                choice_parts = []
-            else:
-                prev_choice_parts.append(choice_token)
-                if len(prev_choice_parts) > 0:
-                    prev_choices.append(prev_choice_parts)
-                pending_optional = prev_pending_optional
-                choice_parts = prev_choice_parts
-                choices = prev_choices
-        if len(choices) > 0:
-            output.append((WildParserState.CHOICES, choices))
-    elif state == WildParserState.CHOICES_ESCAPE:
-        # Escape at end of choice, preserve the backslash
-        lit.append("\\")
-        if len(lit) > 0:
-            choice_parts.append((WildParserState.LITERAL, "".join(lit)))
-        if len(choice_parts) > 0:
-            choices.append(choice_parts)
-        # Unwind stack
-        while stack:
-            is_top_level, prev_pending_optional, prev_choice_parts, prev_choices = (
-                stack.pop()
-            )
-            choice_token = (WildParserState.CHOICES, choices)
-            if is_top_level:
-                output.append(choice_token)
-                choices = []
-                choice_parts = []
-            else:
-                prev_choice_parts.append(choice_token)
-                if len(prev_choice_parts) > 0:
-                    prev_choices.append(prev_choice_parts)
-                pending_optional = prev_pending_optional
-                choice_parts = prev_choice_parts
-                choices = prev_choices
-        if len(choices) > 0:
+        if choices:
             output.append((WildParserState.CHOICES, choices))
 
     return output

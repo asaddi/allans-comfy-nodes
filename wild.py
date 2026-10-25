@@ -142,8 +142,7 @@ def parse_wildcards(input: str) -> list[tuple[WildParserState, Any]]:
     elif state == WildParserState.ESCAPE:
         # Escape at end of string, preserve the backslash
         lit.append("\\")
-        if len(lit) > 0:
-            output.append((WildParserState.LITERAL, "".join(lit)))
+        output.append((WildParserState.LITERAL, "".join(lit)))
     elif state == WildParserState.CHOICES:
         if len(lit) > 0:
             choice_parts.append((WildParserState.LITERAL, "".join(lit)))
@@ -199,6 +198,7 @@ def parse_wildcards(input: str) -> list[tuple[WildParserState, Any]]:
 
 
 def test_basic():
+    """Test parsing a simple literal string without any special characters."""
     parsed = parse_wildcards("Hello there")
     assert len(parsed) == 1
     assert parsed[0][0] == WildParserState.LITERAL
@@ -206,6 +206,7 @@ def test_basic():
 
 
 def test_escape():
+    """Test escaped brace is treated as literal, not choice delimiter."""
     parsed = parse_wildcards(r"Hello \{there")
     assert len(parsed) == 1
     assert parsed[0][0] == WildParserState.LITERAL
@@ -213,6 +214,7 @@ def test_escape():
 
 
 def test_invalid_escape():
+    """Test invalid escape sequence (not followed by special char) is handled gracefully."""
     parsed = parse_wildcards(r"Hello \there")
     assert len(parsed) == 1
     assert parsed[0][0] == WildParserState.LITERAL
@@ -220,6 +222,7 @@ def test_invalid_escape():
 
 
 def test_escape_eos():
+    """Test backslash at end of string is preserved as literal."""
     parsed = parse_wildcards("Hello there\\")
     assert len(parsed) == 1
     assert parsed[0][0] == WildParserState.LITERAL
@@ -227,6 +230,7 @@ def test_escape_eos():
 
 
 def test_single_choice():
+    """Test a choice with a single option (no | separator)."""
     parsed = parse_wildcards(
         "This comes before. {This is the one choice.} This comes after."
     )
@@ -242,6 +246,7 @@ def test_single_choice():
 
 
 def test_single_escape_choice():
+    """Test escaped pipe character within a choice is treated as literal."""
     parsed = parse_wildcards(
         "This comes before. {This is the \\|one choice.} This comes after."
     )
@@ -257,6 +262,7 @@ def test_single_escape_choice():
 
 
 def test_multiple_choice():
+    """Test a choice with multiple options separated by |."""
     parsed = parse_wildcards(
         "This comes before. {This is the one choice.|This is another.} This comes after."
     )
@@ -275,6 +281,7 @@ def test_multiple_choice():
 
 
 def test_incomplete_choice():
+    """Test gracefully handling a choice that is not closed (missing closing brace)."""
     parsed = parse_wildcards(
         "This comes before. {This is the one choice.|This is an incomplete"
     )
@@ -292,6 +299,7 @@ def test_incomplete_choice():
 
 
 def test_empty_choice():
+    """Test that an empty option before | is discarded."""
     parsed = parse_wildcards(
         "This comes before. {|This is the one choice.} This comes after."
     )
@@ -307,6 +315,7 @@ def test_empty_choice():
 
 
 def test_optional_choice():
+    """Test optional choice marker (*) adds an empty string option."""
     parsed = parse_wildcards(
         "This comes before. *{This is one choice.|This is another.} This comes after."
     )
@@ -326,6 +335,7 @@ def test_optional_choice():
 
 
 def test_escaped_optional_choice():
+    """Test escaped * is treated as literal star, not optional marker."""
     parsed = parse_wildcards(
         "This comes before. \\*{This is one choice.|This is another.} This comes after."
     )
@@ -344,6 +354,7 @@ def test_escaped_optional_choice():
 
 
 def test_nested_choice():
+    """Test nested choice where one option contains another choice."""
     parsed = parse_wildcards(
         "This comes before. {This is the first choice.|This is {sub-choice one|sub-choice two}.} This comes after."
     )
@@ -613,3 +624,5 @@ if __name__ == "__main__":
     test_nested_choice_with_escaped_brace()
     test_unclosed_nested_choice()
     test_nested_choice_complex()
+
+    print("All tests passed!")

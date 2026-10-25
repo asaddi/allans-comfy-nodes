@@ -5,6 +5,7 @@ import math
 import torch
 
 from .utils import PromptUtils, WorkflowUtils
+from .wild import WildParserState, parse_wildcards
 
 from comfy_execution.graph import ExecutionBlocker
 from comfy_execution.graph_utils import GraphBuilder
@@ -624,98 +625,6 @@ class ControlBus(SimpleBus):
         )
 
 
-class WildParserState(Enum):
-    LITERAL = auto()
-    ESCAPE = auto()
-    CHOICES = auto()
-    CHOICES_ESCAPE = auto()
-
-
-# Who's crazy enough to write a parser by hand in 2024?!
-def parse_wildcards(input: str):
-    output = []
-
-    state = WildParserState.LITERAL
-
-    lit = []
-    choice = []
-    choices = []
-
-    ESCAPABLE = ("\\", "{", "|", "}")
-
-    for c in input:
-        if state == WildParserState.LITERAL:
-            if c == "\\":
-                state = WildParserState.ESCAPE
-            elif c == "{":
-                if len(lit) > 0:
-                    output.append((WildParserState.LITERAL, "".join(lit)))
-                    lit = []
-
-                choice = []
-                choices = []
-                state = WildParserState.CHOICES
-            else:
-                lit.append(c)
-
-        elif state == WildParserState.ESCAPE:
-            if c in ESCAPABLE:
-                lit.append(c)
-            else:
-                # Not a valid escape, just forget we were escaped
-                lit.append("\\")
-                lit.append(c)
-            state = WildParserState.LITERAL
-
-        elif state == WildParserState.CHOICES:
-            if c == "\\":
-                state = WildParserState.CHOICES_ESCAPE
-            elif c == "}":
-                if len(choice) > 0:
-                    choices.append("".join(choice))
-                if len(choices) > 0:
-                    output.append((WildParserState.CHOICES, choices))
-                state = WildParserState.LITERAL
-            elif c == "|":
-                if len(choice) > 0:
-                    choices.append("".join(choice))
-                choice = []
-            else:
-                choice.append(c)
-
-        elif state == WildParserState.CHOICES_ESCAPE:
-            if c in ESCAPABLE:
-                choice.append(c)
-            else:
-                # Not a valid escape
-                choice.append("\\")
-                choice.append(c)
-            state = WildParserState.CHOICES
-
-    # Finished processing the entire string.
-    # We *should* error out if the state isn't LITERAL, but
-    # we actually don't have that luxury. Just clean up and make do.
-
-    if state == WildParserState.LITERAL:
-        if len(lit) > 0:
-            output.append((WildParserState.LITERAL, "".join(lit)))
-    elif state == WildParserState.ESCAPE:
-        lit.append("\\")
-        output.append((WildParserState.LITERAL, "".join(lit)))
-    elif state == WildParserState.CHOICES:
-        if len(choice) > 0:
-            choices.append("".join(choice))
-        if len(choices) > 0:
-            output.append((WildParserState.CHOICES, choices))
-    elif state == WildParserState.CHOICES_ESCAPE:
-        choice.append("\\")
-        choices.append("".join(choice))
-        # We know it has at least one choice...
-        output.append((WildParserState.CHOICES, choices))
-
-    return output
-
-
 class ReproducibleWildcards:
     @classmethod
     def INPUT_TYPES(cls):
@@ -745,9 +654,8 @@ class ReproducibleWildcards:
 
     CATEGORY = "private"
 
-    def execute(self, text: str, seed: int):
-        parsed = parse_wildcards(text)
-
+    @staticmethod
+    def _resolve_wildcards(parsed: list, take_from_seed) -> str:
         output = []
         for inst, value in parsed:
             assert inst in (
@@ -758,11 +666,28 @@ class ReproducibleWildcards:
                 output.append(value)
             else:
                 count = len(value)
-                choice = seed % count
-                output.append(value[choice])
-                seed = seed // count
+                choice = 0
+                if count > 1:
+                    choice = take_from_seed(count)
+                output.append(
+                    ReproducibleWildcards._resolve_wildcards(
+                        value[choice], take_from_seed
+                    )
+                )
 
-        return ("".join(output),)
+        return "".join(output)
+
+    def execute(self, text: str, seed: int):
+        parsed = parse_wildcards(text)
+        seed_holder = [seed]
+
+        def take_from_seed(count: int) -> int:
+            seed = seed_holder[0]
+            choice = seed % count
+            seed_holder[0] = seed // count
+            return choice
+
+        return (ReproducibleWildcards._resolve_wildcards(parsed, take_from_seed),)
 
 
 class Orientation(Enum):

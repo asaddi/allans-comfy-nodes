@@ -1,6 +1,7 @@
 # Copyright (c) 2024 Allan Saddi <allan@saddi.com>
 from enum import Enum, auto
 import math
+import random
 
 import torch
 
@@ -655,7 +656,7 @@ class ReproducibleWildcards:
     CATEGORY = "private"
 
     @staticmethod
-    def _resolve_wildcards(parsed: list, take_from_seed) -> str:
+    def _resolve_wildcards(parsed: list, rng: random.Random) -> str:
         output = []
         for inst, value in parsed:
             assert inst in (
@@ -666,28 +667,18 @@ class ReproducibleWildcards:
                 output.append(value)
             else:
                 count = len(value)
-                choice = 0
                 if count > 1:
-                    choice = take_from_seed(count)
-                output.append(
-                    ReproducibleWildcards._resolve_wildcards(
-                        value[choice], take_from_seed
-                    )
-                )
+                    choice = rng.choice(value)
+                else:
+                    choice = value[0]
+                output.append(ReproducibleWildcards._resolve_wildcards(choice, rng))
 
         return "".join(output)
 
     def execute(self, text: str, seed: int):
         parsed = parse_wildcards(text)
-        seed_holder = [seed]
-
-        def take_from_seed(count: int) -> int:
-            seed = seed_holder[0]
-            choice = seed % count
-            seed_holder[0] = seed // count
-            return choice
-
-        return (ReproducibleWildcards._resolve_wildcards(parsed, take_from_seed),)
+        rng = random.Random(seed)
+        return (ReproducibleWildcards._resolve_wildcards(parsed, rng),)
 
 
 class Orientation(Enum):

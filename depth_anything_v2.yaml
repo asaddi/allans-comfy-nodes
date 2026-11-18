@@ -1,12 +1,15 @@
 models:
   - name: vitl
     repo_id: depth-anything/Depth-Anything-V2-Large
+    revision: cbbb86a30ce19b5684b7a05155dc7e6cbc7685b9
     use_hf_cache: true
 
   - name: vitb
     repo_id: depth-anything/Depth-Anything-V2-Base
+    revision: a4e71a6c2ce52fe50df0f212066b0d4a87be9b5e
     use_hf_cache: true
 
   - name: vits
     repo_id: depth-anything/Depth-Anything-V2-Small
+    revision: 03876f8651c73a60fe4c2c48294e09fcb6838fcf
     use_hf_cache: true
